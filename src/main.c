@@ -5,12 +5,16 @@ struct inst {
   enum tag {
     CLEAR,
     JUMP,
+    SET,
+    ADD,
+    SET_INDEX,
   } tag;
 };
 
 struct state {
   bool running;
 
+  uint16_t pc;
   uint16_t stack[16];
   uint8_t heap[4096];
 };
