@@ -1,5 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "raylib.h"
@@ -16,13 +18,16 @@
 typedef uint64_t display[DISPLAY_HEIGHT];
 
 struct inst {
-  enum tag {
+  enum inst_tag {
     CLEAR,
     JUMP,
     SET,
     ADD,
     SET_INDEX,
   } tag;
+  union inst_data {
+    uint16_t jump;
+  } data;
 };
 
 struct state {
@@ -51,7 +56,6 @@ void init_state(struct state *state) {
   state->running = true;
   memset(state->display, 0, sizeof(state->display));
 }
-
 
 uint16_t fetch(uint8_t heap[4096], uint16_t pc);
 struct inst decode(uint16_t inst);
@@ -82,6 +86,31 @@ void draw_grid(display display) {
   EndDrawing();
 }
 
-uint16_t *fetch(uint8_t heap[4096], uint16_t pc) {
-  return (uint16_t *)&heap[pc++];
+uint16_t fetch(uint8_t heap[4096], uint16_t pc) {
+  return *(uint16_t *)&heap[pc++];
 }
+
+#define NIBBLE1(inst) (inst & 0xF000) >> 12
+#define NIBBLE2(inst) (inst & 0x0F00) >> 8
+#define NIBBLE3(inst) (inst & 0x00F0) >> 4
+#define NIBBLE4(inst) (inst & 0x000F) >> 0
+#define LOWER12(inst) (inst & 0x0FFF) >> 0
+
+struct inst decode(uint16_t inst) {
+  switch (NIBBLE1(inst)) {
+  case (0x0):
+    if (inst == 0x00E0)
+      return (struct inst){.tag = CLEAR};
+    break;
+  case (0x1):
+    // JUMP - Jump is the only instruction that starts with 0x1
+    return (struct inst){.tag = JUMP, .data = {.jump = LOWER12(inst)}};
+  }
+  printf("Unknown inst of value %x\n", inst);
+  exit(1);
+}
+#undef NIBBLE1
+#undef NIBBLE2
+#undef NIBBLE3
+#undef NIBBLE4
+#undef LOWER12
