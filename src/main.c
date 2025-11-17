@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,8 +72,8 @@ struct state {
   uint8_t heap[4096];
 };
 
-int execute_entry(char *filename);
-int disassemble_entry(char *filename);
+int execute_entry(const char *filename);
+int disassemble_entry(const char *filename);
 
 int main(int argc, char **argv) {
 
@@ -129,7 +130,7 @@ int main(int argc, char **argv) {
 void init_state(struct state *state);
 int main_loop(struct state *state);
 
-int execute_entry(char *filename) {
+int execute_entry(const char *filename) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
              "raylib [core] example - basic window");
   struct state state;
@@ -144,7 +145,7 @@ void init_state(struct state *state) {
   memset(state->display, 0, sizeof(state->display));
 }
 
-uint16_t fetch(uint8_t heap[4096], uint16_t pc);
+uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
 struct inst decode(uint16_t inst);
 void execute(struct inst inst);
 
@@ -152,7 +153,7 @@ void draw_grid(display display);
 
 int main_loop(struct state *state) {
   while (!WindowShouldClose()) {
-    uint16_t raw_inst = fetch(state->heap, state->pc);
+    uint16_t raw_inst = fetch(state->heap, &state->pc);
     struct inst inst = decode(raw_inst);
     draw_grid(state->display);
   }
@@ -173,8 +174,8 @@ void draw_grid(display display) {
   EndDrawing();
 }
 
-uint16_t fetch(uint8_t heap[4096], uint16_t pc) {
-  return *(uint16_t *)&heap[pc++];
+uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
+  return *(uint16_t *)&heap[(*pc)++];
 }
 
 #define NIBBLE1(inst) (inst & 0xF000) >> 12
@@ -225,7 +226,19 @@ struct inst decode(uint16_t inst) {
 
 // Code below is for disassembling
 
-int disassemble_entry(char *filename) {
-  printf("filename='%s'\n", filename);
+int disassemble_entry(const char *filename) {
+  printf("Disassembling filename='%s'\n", filename);
+  FILE *f = fopen(filename, "r");
+  assert(f != NULL);
+  uint8_t buf[4096];
+  size_t bytes_read = fread(buf, sizeof(uint8_t), sizeof(buf), f);
+  assert(bytes_read != 0);
+
+  uint16_t pc = 0;
+
+  while (pc < bytes_read) {
+    uint16_t raw_inst = fetch(buf, &pc);
+    printf("0x%04x 0x%04x\n", pc, raw_inst);
+  }
   return 0;
 }
