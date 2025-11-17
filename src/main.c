@@ -149,7 +149,7 @@ void init_state(struct state *state) {
 
 uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
 struct inst decode(uint16_t inst);
-void execute(struct inst inst);
+void execute(struct state *state, struct inst inst);
 
 void draw_grid(display display);
 
@@ -226,6 +226,11 @@ struct inst decode(uint16_t inst) {
 #undef NIBBLE4
 #undef LOWER8
 #undef LOWER12
+
+void execute(struct state *state, struct inst inst) {
+  
+
+}
 
 // Code below is for disassembling
 
