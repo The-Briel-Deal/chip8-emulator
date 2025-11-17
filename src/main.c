@@ -15,6 +15,8 @@
 #define PIXEL_WIDTH WINDOW_WIDTH / DISPLAY_WIDTH
 #define PIXEL_HEIGHT WINDOW_HEIGHT / DISPLAY_HEIGHT
 
+#define PROG_START 0x200
+
 typedef uint64_t display[DISPLAY_HEIGHT];
 
 struct inst {
@@ -54,6 +56,7 @@ int main() {
 
 void init_state(struct state *state) {
   state->running = true;
+  state->pc = PROG_START;
   memset(state->display, 0, sizeof(state->display));
 }
 
