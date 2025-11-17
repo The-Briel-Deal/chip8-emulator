@@ -52,15 +52,17 @@ void init_state(struct state *state) {
   memset(state->display, 0, sizeof(state->display));
 }
 
-void draw_grid(display display);
-uint16_t *fetch(uint8_t heap[4096], uint16_t pc);
+
+uint16_t fetch(uint8_t heap[4096], uint16_t pc);
 struct inst decode(uint16_t inst);
-// TODO: This isn't right
-uint16_t execute(uint16_t pc);
+void execute(struct inst inst);
+
+void draw_grid(display display);
 
 int main_loop(struct state *state) {
   while (!WindowShouldClose()) {
-    // uint16_t *inst = fetch(state->heap, state->pc);
+    uint16_t raw_inst = fetch(state->heap, state->pc);
+    struct inst inst = decode(raw_inst);
     draw_grid(state->display);
   }
   return 0;
