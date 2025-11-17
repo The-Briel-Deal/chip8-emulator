@@ -1,8 +1,11 @@
+#include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "raylib.h"
 
@@ -18,6 +21,12 @@
 #define PROG_START 0x200
 
 typedef uint64_t display[DISPLAY_HEIGHT];
+
+enum run_mode {
+  UNSET = 0,
+  EXECUTE,
+  DISASSEMBLE,
+};
 
 // For instructions with 0x_XNN
 struct reg_val {
@@ -62,16 +71,71 @@ struct state {
   uint8_t heap[4096];
 };
 
+int execute_entry(char *filename);
+int disassemble_entry(char *filename);
+
+int main(int argc, char **argv) {
+
+  enum run_mode run_mode = UNSET;
+
+  int c;
+  char *filename = NULL;
+
+  while ((c = getopt(argc, argv, "edf:")) != -1)
+    switch (c) {
+    case 'e':
+      if (run_mode != UNSET) {
+        fprintf(stderr,
+                "Option `e` and `d` specified, these are mutually exclusive\n");
+        return 1;
+      }
+      run_mode = EXECUTE;
+      break;
+    case 'd':
+      if (run_mode != UNSET) {
+        fprintf(stderr,
+                "Option `e` and `d` specified, these are mutually exclusive\n");
+        return 1;
+      }
+      run_mode = DISASSEMBLE;
+      break;
+    case 'f':
+      filename = optarg;
+      break;
+    case '?':
+      if (optopt == 'f')
+        fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+      else if (isprint(optopt))
+        fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+      else
+        fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
+      return 1;
+    default:
+      abort();
+    }
+
+  switch (run_mode) {
+  case EXECUTE:
+    return execute_entry(filename);
+  case DISASSEMBLE:
+    return disassemble_entry(filename);
+  case UNSET:
+    fprintf(stderr, "Run Mode unset, please specify either `-e` to execute or "
+                    "`-d` to disassemble.\n");
+    return 1;
+  }
+}
+
 void init_state(struct state *state);
 int main_loop(struct state *state);
 
-int main() {
+int execute_entry(char *filename) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
              "raylib [core] example - basic window");
   struct state state;
   init_state(&state);
   state.display[3] = 32;
-  main_loop(&state);
+  return main_loop(&state);
 }
 
 void init_state(struct state *state) {
@@ -158,3 +222,9 @@ struct inst decode(uint16_t inst) {
 #undef NIBBLE4
 #undef LOWER8
 #undef LOWER12
+
+// Code below is for disassembling
+
+int disassemble_entry(char *filename) { printf("filename='%s'\n", filename);
+  return 0;
+}
