@@ -234,12 +234,12 @@ int disassemble_entry(const char *filename) {
   FILE *f = fopen(filename, "r");
   assert(f != NULL);
   uint8_t buf[4096];
-  size_t bytes_read = fread(buf, sizeof(uint8_t), sizeof(buf), f);
+  size_t bytes_read = fread(&buf[PROG_START], sizeof(uint8_t), sizeof(buf), f);
   assert(bytes_read != 0);
 
-  uint16_t pc = 0;
+  uint16_t pc = PROG_START;
 
-  while (pc < bytes_read) {
+  while (pc < bytes_read + PROG_START) {
     uint16_t raw_inst = fetch(buf, &pc);
     printf("pc=0x%04x ri=0x%04x ", pc, raw_inst);
     struct inst inst = decode(raw_inst);
@@ -248,19 +248,19 @@ int disassemble_entry(const char *filename) {
       printf("CLEAR");
       break;
     case JUMP:
-      printf("JUMP");
+      printf("JUMP 0x%04x", inst.data.jump);
       break;
     case SET:
-      printf("SET");
+      printf("SET v%x to 0x%02x", inst.data.set.reg, inst.data.set.val);
       break;
     case ADD:
-      printf("ADD");
+      printf("ADD v%x += %d", inst.data.add.reg, inst.data.add.val);
       break;
     case SET_IDX:
-      printf("SET_IDX");
+      printf("SET_IDX 0x%03x", inst.data.set_idx);
       break;
     case DISPLAY:
-      printf("DISPLAY");
+      printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x, inst.data.display.reg_y, inst.data.display.height);
       break;
     case UNKNOWN:
       printf("UNKNOWN");
