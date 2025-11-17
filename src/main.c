@@ -19,16 +19,36 @@
 
 typedef uint64_t display[DISPLAY_HEIGHT];
 
-struct inst {
-  enum inst_tag {
+// For instructions with 0x_XNN
+struct reg_val {
+  uint8_t reg; // X
+  uint8_t val; // NN
+};
+
+struct __attribute__((packed)) inst {
+  enum inst_tag : uint16_t {
     CLEAR,
     JUMP,
     SET,
     ADD,
-    SET_INDEX,
+    SET_IDX,
+    DISPLAY,
   } tag;
   union inst_data {
-    uint16_t jump;
+    // JUMP - 0x1NNN
+    uint16_t jump; // NNN
+    // SET - 0x6XNN
+    struct reg_val set; // reg = X, val = NN
+    // ADD - 0x7XNN
+    struct reg_val add; // reg = X, val = NN
+    // SET_IDX - 0xANNN
+    uint16_t set_idx; // NNN
+    // DISPLAY - 0xDXYN
+    struct __attribute__((packed)) display_data {
+      u_int reg_x : 4;  // X
+      u_int reg_y : 4;  // Y
+      u_int height : 4; // N
+    } display;
   } data;
 };
 
@@ -97,17 +117,34 @@ uint16_t fetch(uint8_t heap[4096], uint16_t pc) {
 #define NIBBLE2(inst) (inst & 0x0F00) >> 8
 #define NIBBLE3(inst) (inst & 0x00F0) >> 4
 #define NIBBLE4(inst) (inst & 0x000F) >> 0
+#define LOWER8(inst) (inst & 0x00FF) >> 0
 #define LOWER12(inst) (inst & 0x0FFF) >> 0
 
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
-  case (0x0):
+  case 0x0:
     if (inst == 0x00E0)
       return (struct inst){.tag = CLEAR};
     break;
-  case (0x1):
+  case 0x1:
     // JUMP - Jump is the only instruction that starts with 0x1
     return (struct inst){.tag = JUMP, .data = {.jump = LOWER12(inst)}};
+  case 0x6:
+    // SET - 0x6XNN set reg vX to NN
+    return (struct inst){
+        .tag = SET,
+        .data = {.set = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
+  case 0x7:
+    // ADD - 0x7XNN add NN to reg vX
+    return (struct inst){
+        .tag = ADD,
+        .data = {.add = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
+  case 0xA:
+    // SET_IDX - 0xANNN set index reg to NNN
+    return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
+  case 0xD:
+    // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
+    return (struct inst){.tag = DISPLAY, .data = {}};
   }
   printf("Unknown inst of value %x\n", inst);
   exit(1);
@@ -116,4 +153,5 @@ struct inst decode(uint16_t inst) {
 #undef NIBBLE2
 #undef NIBBLE3
 #undef NIBBLE4
+#undef LOWER8
 #undef LOWER12
