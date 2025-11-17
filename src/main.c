@@ -225,6 +225,7 @@ struct inst decode(uint16_t inst) {
 
 // Code below is for disassembling
 
-int disassemble_entry(char *filename) { printf("filename='%s'\n", filename);
+int disassemble_entry(char *filename) {
+  printf("filename='%s'\n", filename);
   return 0;
 }
