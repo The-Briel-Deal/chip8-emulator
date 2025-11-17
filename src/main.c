@@ -30,8 +30,15 @@ int main() {
 
 void init_state(struct state *state) { state->running = true; }
 
-uint16_t fetch(uint16_t pc);
-uint16_t decode(uint16_t inst);
+uint16_t *fetch(uint8_t heap[4096], uint16_t pc);
+struct inst decode(uint16_t inst);
+// TODO: This isn't right
 uint16_t execute(uint16_t pc);
 
-int main_loop(struct state *state) {}
+int main_loop(struct state *state) {
+  uint16_t *inst = fetch(state->heap, state->pc);
+}
+
+uint16_t *fetch(uint8_t heap[4096], uint16_t pc) {
+  return (uint16_t *)&heap[pc++];
+}
