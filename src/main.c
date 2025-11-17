@@ -260,7 +260,8 @@ int disassemble_entry(const char *filename) {
       printf("SET_IDX 0x%03x", inst.data.set_idx);
       break;
     case DISPLAY:
-      printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x, inst.data.display.reg_y, inst.data.display.height);
+      printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
+             inst.data.display.reg_y, inst.data.display.height);
       break;
     case UNKNOWN:
       printf("UNKNOWN");
