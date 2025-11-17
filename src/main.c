@@ -37,6 +37,8 @@ struct reg_val {
 
 struct __attribute__((packed)) inst {
   enum inst_tag : uint16_t {
+    UNKNOWN = 0,
+
     CLEAR,
     JUMP,
     SET,
@@ -175,7 +177,9 @@ void draw_grid(display display) {
 }
 
 uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
-  return *(uint16_t *)&heap[(*pc)++];
+  uint8_t byte1 = heap[(*pc)++];
+  uint8_t byte2 = heap[(*pc)++];
+  return byte1 << 8 | byte2 << 0;
 }
 
 #define NIBBLE1(inst) (inst & 0xF000) >> 12
@@ -214,8 +218,7 @@ struct inst decode(uint16_t inst) {
                                               .reg_y = NIBBLE3(inst),
                                               .height = NIBBLE4(inst)}}};
   }
-  printf("Unknown inst of value %x\n", inst);
-  exit(1);
+  return (struct inst){.tag = UNKNOWN};
 }
 #undef NIBBLE1
 #undef NIBBLE2
@@ -238,7 +241,33 @@ int disassemble_entry(const char *filename) {
 
   while (pc < bytes_read) {
     uint16_t raw_inst = fetch(buf, &pc);
-    printf("0x%04x 0x%04x\n", pc, raw_inst);
+    printf("pc=0x%04x ri=0x%04x ", pc, raw_inst);
+    struct inst inst = decode(raw_inst);
+    switch (inst.tag) {
+    case CLEAR:
+      printf("CLEAR");
+      break;
+    case JUMP:
+      printf("JUMP");
+      break;
+    case SET:
+      printf("SET");
+      break;
+    case ADD:
+      printf("ADD");
+      break;
+    case SET_IDX:
+      printf("SET_IDX");
+      break;
+    case DISPLAY:
+      printf("DISPLAY");
+      break;
+    case UNKNOWN:
+      printf("UNKNOWN");
+      break;
+    }
+
+    printf("\n");
   }
   return 0;
 }
