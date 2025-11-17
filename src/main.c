@@ -144,7 +144,10 @@ struct inst decode(uint16_t inst) {
     return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
   case 0xD:
     // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
-    return (struct inst){.tag = DISPLAY, .data = {}};
+    return (struct inst){.tag = DISPLAY,
+                         .data = {.display = {.reg_x = NIBBLE2(inst),
+                                              .reg_y = NIBBLE3(inst),
+                                              .height = NIBBLE4(inst)}}};
   }
   printf("Unknown inst of value %x\n", inst);
   exit(1);
