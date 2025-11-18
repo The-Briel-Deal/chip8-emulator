@@ -235,6 +235,13 @@ struct inst decode(uint16_t inst) {
 #undef LOWER8
 #undef LOWER12
 
+#define REVERSE_BYTE(byte)                                                     \
+  {                                                                            \
+    byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;                            \
+    byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;                            \
+    byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;                            \
+  }
+
 void execute(struct state *state, struct inst inst) {
   switch (inst.tag) {
   case CLEAR:
@@ -257,16 +264,17 @@ void execute(struct state *state, struct inst inst) {
     uint8_t y_pos = state->regs[inst.data.display.reg_y];
     uint8_t height = inst.data.display.height;
 
+    // If no bits are turned off set VF to 0
+    state->regs[0xF] = 0;
     for (int i = 0; i < height; i++) {
       uint8_t line = state->heap[state->index_reg + i];
-
-      { // Reverse the order of the byte.
-        line = (line & 0xF0) >> 4 | (line & 0x0F) << 4;
-        line = (line & 0xCC) >> 2 | (line & 0x33) << 2;
-        line = (line & 0xAA) >> 1 | (line & 0x55) << 1;
-      }
-      printf("line = %x\n", line);
+      REVERSE_BYTE(line);
       uint64_t *display_line = &state->display[y_pos + i];
+
+      // If this turns any bits off set VF to 1
+      if (*display_line & (((uint64_t)line) << x_pos))
+        state->regs[0xF] = 1;
+
       *display_line ^= (((uint64_t)line) << x_pos);
     }
     break;
