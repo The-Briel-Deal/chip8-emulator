@@ -141,7 +141,8 @@ int execute_entry(const char *filename) {
   init_state(&state);
   FILE *f = fopen(filename, "r");
   assert(f != NULL);
-  size_t bytes_read = fread(&state.heap[PROG_START], sizeof(uint8_t), sizeof(state.heap), f);
+  size_t bytes_read =
+      fread(&state.heap[PROG_START], sizeof(uint8_t), sizeof(state.heap), f);
   assert(bytes_read != 0);
   state.display[3] = 32;
   return main_loop(&state);
@@ -258,9 +259,15 @@ void execute(struct state *state, struct inst inst) {
 
     for (int i = 0; i < height; i++) {
       uint8_t line = state->heap[state->index_reg + i];
+
+      { // Reverse the order of the byte.
+        line = (line & 0xF0) >> 4 | (line & 0x0F) << 4;
+        line = (line & 0xCC) >> 2 | (line & 0x33) << 2;
+        line = (line & 0xAA) >> 1 | (line & 0x55) << 1;
+      }
       printf("line = %x\n", line);
       uint64_t *display_line = &state->display[y_pos + i];
-      *display_line |= (((uint64_t)line) << x_pos);
+      *display_line ^= (((uint64_t)line) << x_pos);
     }
     break;
   }
