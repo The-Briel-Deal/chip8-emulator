@@ -40,6 +40,7 @@ struct __attribute__((packed)) inst {
     UNKNOWN = 0,
 
     CLEAR,
+    RET,
     JUMP,
     SET,
     ADD,
@@ -202,6 +203,8 @@ struct inst decode(uint16_t inst) {
   case 0x0:
     if (inst == 0x00E0)
       return (struct inst){.tag = CLEAR};
+    if (inst == 0x00EE)
+      return (struct inst){.tag = RET};
     break;
   case 0x1:
     // JUMP - Jump is the only instruction that starts with 0x1

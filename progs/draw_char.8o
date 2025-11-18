@@ -1,0 +1,11 @@
+# deompiled program:
+
+: main
+	clear
+	v2 := 0x0A
+	i := hex v2
+	v0 := 4
+	v1 := 4
+	sprite v0 v1 0x05
+	loop
+	again
