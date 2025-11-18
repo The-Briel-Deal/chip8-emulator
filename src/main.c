@@ -41,6 +41,7 @@ struct __attribute__((packed)) inst {
 
     CLEAR,
     RET,
+    CALL,
     JUMP,
     SET,
     ADD,
@@ -50,6 +51,8 @@ struct __attribute__((packed)) inst {
   union inst_data {
     // JUMP - 0x1NNN
     uint16_t jump; // NNN
+    // CALL - 0x2NNN
+    uint16_t call; // NNN
     // SET - 0x6XNN
     struct reg_val set; // reg = X, val = NN
     // ADD - 0x7XNN
@@ -72,6 +75,7 @@ struct state {
   display display;
   uint16_t pc;
   uint16_t stack[16];
+  uint8_t stack_top;
   uint16_t index_reg;
   uint8_t regs[16];
   uint8_t heap[4096];
@@ -152,6 +156,7 @@ int execute_entry(const char *filename) {
 void init_state(struct state *state) {
   state->running = true;
   state->pc = PROG_START;
+  state->stack_top = 0;
   memset(state->display, 0, sizeof(state->display));
 }
 
@@ -209,6 +214,9 @@ struct inst decode(uint16_t inst) {
   case 0x1:
     // JUMP - Jump is the only instruction that starts with 0x1
     return (struct inst){.tag = JUMP, .data = {.jump = LOWER12(inst)}};
+  case 0x2:
+    // CALL - Jump is the only instruction that starts with 0x2
+    return (struct inst){.tag = CALL, .data = {.jump = LOWER12(inst)}};
   case 0x6:
     // SET - 0x6XNN set reg vX to NN
     return (struct inst){
@@ -244,12 +252,24 @@ struct inst decode(uint16_t inst) {
     byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;                            \
     byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;                            \
   }
+#define PUSH(val) state->stack[++state->stack_top] = val
 
 void execute(struct state *state, struct inst inst) {
   switch (inst.tag) {
   case CLEAR:
     memset(state->display, 0, sizeof(state->display));
     break;
+  case RET:
+    assert(state->stack_top > 0);
+    uint16_t return_addr = state->stack[state->stack_top--];
+    state->pc = return_addr;
+    break;
+  case CALL: {
+    uint16_t call_addr = inst.data.call;
+    uint16_t ret_addr = state->pc;
+    PUSH(ret_addr);
+    state->pc = call_addr;
+  }
   case JUMP:
     state->pc = inst.data.jump;
     break;

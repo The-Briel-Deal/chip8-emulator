@@ -1,0 +1,22 @@
+# deompiled program:
+
+: main
+	clear
+	:call draw_a
+	:call draw_b
+	loop
+	again
+
+: draw_a
+  v2 := 0x0A
+	i := hex v2
+	v0 := 4
+	v1 := 4
+	sprite v0 v1 0x05
+	
+: draw_b
+  v2 := 0x0B
+	i := hex v2
+	v0 := 9
+	v1 := 4
+	sprite v0 v1 0x05
