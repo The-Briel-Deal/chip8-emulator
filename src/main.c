@@ -71,6 +71,8 @@ struct state {
   display display;
   uint16_t pc;
   uint16_t stack[16];
+  uint16_t index_reg;
+  uint8_t regs[16];
   uint8_t heap[4096];
 };
 
@@ -137,6 +139,10 @@ int execute_entry(const char *filename) {
              "raylib [core] example - basic window");
   struct state state;
   init_state(&state);
+  FILE *f = fopen(filename, "r");
+  assert(f != NULL);
+  size_t bytes_read = fread(&state.heap[PROG_START], sizeof(uint8_t), sizeof(state.heap), f);
+  assert(bytes_read != 0);
   state.display[3] = 32;
   return main_loop(&state);
 }
@@ -157,6 +163,7 @@ int main_loop(struct state *state) {
   while (!WindowShouldClose()) {
     uint16_t raw_inst = fetch(state->heap, &state->pc);
     struct inst inst = decode(raw_inst);
+    execute(state, inst);
     draw_grid(state->display);
   }
   return 0;
@@ -228,8 +235,38 @@ struct inst decode(uint16_t inst) {
 #undef LOWER12
 
 void execute(struct state *state, struct inst inst) {
-  
+  switch (inst.tag) {
+  case CLEAR:
+    memset(state->display, 0, sizeof(state->display));
+    break;
+  case JUMP:
+    state->pc = inst.data.jump;
+    break;
+  case SET:
+    state->regs[inst.data.set.reg] = inst.data.set.val;
+    break;
+  case ADD:
+    state->regs[inst.data.add.reg] += inst.data.add.val;
+    break;
+  case SET_IDX:
+    state->index_reg = inst.data.set_idx;
+    break;
+  case DISPLAY: {
+    uint8_t x_pos = state->regs[inst.data.display.reg_x];
+    uint8_t y_pos = state->regs[inst.data.display.reg_y];
+    uint8_t height = inst.data.display.height;
 
+    for (int i = 0; i < height; i++) {
+      uint8_t line = state->heap[state->index_reg + i];
+      printf("line = %x\n", line);
+      uint64_t *display_line = &state->display[y_pos + i];
+      *display_line |= (((uint64_t)line) << x_pos);
+    }
+    break;
+  }
+  case UNKNOWN:
+    break;
+  }
 }
 
 // Code below is for disassembling
