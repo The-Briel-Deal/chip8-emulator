@@ -327,14 +327,14 @@ struct inst decode(uint16_t inst) {
               .reg_add = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
           }};
     case 0x5:
-      // REG_SUB - Set Vx = Vx + Vy, set VF = carry.
+      // REG_SUB - Set Vx = Vx - Vy, set VF = NOT borrow
       return (struct inst){
           .tag = REG_SUB,
           .data = {
               .reg_sub = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
           }};
     case 0x6:
-      // REG_SHIFT_R - Shift vX 1 to the right and set vF to the lost bit.
+      // REG_SHIFT_R - Shift vX 1 to the right and set vF to the lost bit
       //
       // TODO: If I want to support the superchip or chip-48 then i'll need to
       // make this user configurable. On those interpreters Y was ignored.
@@ -344,20 +344,22 @@ struct inst decode(uint16_t inst) {
               .reg_shift_r = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
           }};
     case 0xE:
-      // REG_SHIFT_L - Shift vX 1 to the right and set vF to the lost bit.
+      // REG_SHIFT_L - Shift vX 1 to the left and set vF to the lost bit
       return (struct inst){
           .tag = REG_SHIFT_L,
           .data = {
               .reg_shift_l = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
           }};
     case 0x7:
-      // REG_SHIFT_L - Shift vX 1 to the right and set vF to the lost bit.
+      // REG_SUB_N - Set Vx = Vy - Vx, set VF = NOT borrow
       return (struct inst){
           .tag = REG_SUB_N,
           .data = {
               .reg_sub_n = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
           }};
     }
+  case 0x9:
+    return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
   case 0xA:
     // SET_IDX - 0xANNN set index reg to NNN
     return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
