@@ -75,20 +75,9 @@ struct __attribute__((packed)) inst {
   union inst_data {
     uint16_t addr;
     struct reg_val reg_val;
-
-    struct reg_reg skip_if_regs_equal;
-    struct reg_reg skip_if_regs_not_equal;
+    struct reg_reg reg_reg;
 
     uint8_t load_char;
-    struct reg_reg load_reg_into_reg;
-    struct reg_reg reg_bitwise_or;
-    struct reg_reg reg_bitwise_and;
-    struct reg_reg reg_bitwise_xor;
-    struct reg_reg reg_add;
-    struct reg_reg reg_sub;
-    struct reg_reg reg_sub_n;
-    struct reg_reg reg_shift_r;
-    struct reg_reg reg_shift_l;
 
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
@@ -243,6 +232,12 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
       .reg_val = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}                   \
     }                                                                          \
   }
+#define RR_INST(inst_tag)                                                      \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {                                                 \
+      .reg_reg = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},               \
+    }                                                                          \
+  }
 
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
@@ -254,92 +249,22 @@ struct inst decode(uint16_t inst) {
   case 0x2: return ADDR_INST(CALL);
   case 0x3: return RV_INST(SKIP_IF_EQUAL);
   case 0x4: return RV_INST(SKIP_IF_NOT_EQUAL);
-  case 0x5:
-    // SKIP_IF_REGS_EQUAL
-    assert(NIBBLE4(0x0));
-    return (struct inst){.tag = SKIP_IF_REGS_EQUAL,
-                         .data = {
-                             .skip_if_regs_equal = {.reg1 = NIBBLE2(inst),
-                                                    .reg2 = NIBBLE3(inst)},
-                         }};
+  case 0x5: return RR_INST(SKIP_IF_REGS_EQUAL);
   case 0x6: return RV_INST(SET);
-
   case 0x7: return RV_INST(ADD);
   case 0x8:
     switch (NIBBLE4(inst)) {
-    case 0x0:
-      // LOAD_REG_INTO_REG - Set Vx = Vy
-      return (struct inst){.tag = LOAD_REG_INTO_REG,
-                           .data = {
-                               .load_reg_into_reg = {.reg1 = NIBBLE2(inst),
-                                                     .reg2 = NIBBLE3(inst)},
-                           }};
-    case 0x1:
-      // REG_BITWISE_OR - Set Vx = Vx OR Vy
-      return (struct inst){
-          .tag = REG_BITWISE_OR,
-          .data = {
-              .reg_bitwise_or = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x2:
-      // REG_BITWISE_AND - Set Vx = Vx AND Vy
-      return (struct inst){
-          .tag = REG_BITWISE_AND,
-          .data = {
-              .reg_bitwise_and = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x3:
-      // REG_BITWISE_XOR - Set Vx = Vx XOR Vy
-      return (struct inst){
-          .tag = REG_BITWISE_XOR,
-          .data = {
-              .reg_bitwise_xor = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x4:
-      // REG_ADD - Set Vx = Vx + Vy, set VF = carry.
-      return (struct inst){
-          .tag = REG_ADD,
-          .data = {
-              .reg_add = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x5:
-      // REG_SUB - Set Vx = Vx - Vy, set VF = NOT borrow
-      return (struct inst){
-          .tag = REG_SUB,
-          .data = {
-              .reg_sub = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x6:
-      // REG_SHIFT_R - Shift vX 1 to the right and set vF to the lost bit
-      //
-      // TODO: If I want to support the superchip or chip-48 then i'll need to
-      // make this user configurable. On those interpreters Y was ignored.
-      return (struct inst){
-          .tag = REG_SHIFT_R,
-          .data = {
-              .reg_shift_r = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0xE:
-      // REG_SHIFT_L - Shift vX 1 to the left and set vF to the lost bit
-      return (struct inst){
-          .tag = REG_SHIFT_L,
-          .data = {
-              .reg_shift_l = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
-    case 0x7:
-      // REG_SUB_N - Set Vx = Vy - Vx, set VF = NOT borrow
-      return (struct inst){
-          .tag = REG_SUB_N,
-          .data = {
-              .reg_sub_n = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
-          }};
+    case 0x0: return RR_INST(LOAD_REG_INTO_REG);
+    case 0x1: return RR_INST(REG_BITWISE_OR);
+    case 0x2: return RR_INST(REG_BITWISE_AND);
+    case 0x3: return RR_INST(REG_BITWISE_XOR);
+    case 0x4: return RR_INST(REG_ADD);
+    case 0x5: return RR_INST(REG_SUB);
+    case 0x6: return RR_INST(REG_SHIFT_R);
+    case 0xE: return RR_INST(REG_SHIFT_L);
+    case 0x7: return RR_INST(REG_SUB_N);
     }
-  case 0x9:
-    return (struct inst){.tag = SKIP_IF_REGS_NOT_EQUAL,
-                         .data = {
-                             .skip_if_regs_not_equal = {.reg1 = NIBBLE2(inst),
-                                                        .reg2 = NIBBLE3(inst)},
-                         }};
+  case 0x9: return RR_INST(SKIP_IF_REGS_NOT_EQUAL);
   case 0xA: return ADDR_INST(SET_IDX);
   case 0xB: return ADDR_INST(JUMP_OFFSET);
   case 0xC: return RV_INST(RND);
