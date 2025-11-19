@@ -72,9 +72,18 @@ struct __attribute__((packed)) inst {
     RND,
     DISPLAY,
     SKIP_KEY_DOWN,
-    SKIP_KEY_UP
+    SKIP_KEY_UP,
+    LOAD_DELAY_TIMER,
+    LOAD_KEY_PRESS,
+    SET_DELAY_TIMER,
+    SET_SOUND_TIMER,
+    ADD_INDEX,
+    LOAD_BCD,
+    STORE_REGS,
+    LOAD_REGS,
   } tag;
   union inst_data {
+    uint8_t reg;
     uint8_t hex_char;
     uint16_t addr;
     struct reg_val reg_val;
@@ -239,6 +248,12 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
       .reg_reg = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},               \
     }                                                                          \
   }
+#define R_INST(inst_tag)                                                       \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {                                                 \
+      .reg = NIBBLE2(inst),                                                    \
+    }                                                                          \
+  }
 #define CH_INST(inst_tag)                                                      \
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {.hex_char = NIBBLE2(inst) }                      \
@@ -293,7 +308,15 @@ struct inst decode(uint16_t inst) {
     break;
   case 0xF:
     switch (LOWER8(inst)) {
-    case 0x29: return CH_INST(LOAD_CHAR);
+    case 0x07: return R_INST(LOAD_DELAY_TIMER);
+    case 0x0A: return R_INST(LOAD_KEY_PRESS);
+    case 0x15: return R_INST(SET_DELAY_TIMER);
+    case 0x18: return R_INST(SET_SOUND_TIMER);
+    case 0x1E: return R_INST(ADD_INDEX);
+    case 0x29: return CH_INST(LOAD_CHAR); // Maybe this should be R_INST()
+    case 0x33: return R_INST(LOAD_BCD);
+    case 0x55: return R_INST(STORE_REGS);
+    case 0x65: return R_INST(LOAD_REGS);
     }
     break;
   }
