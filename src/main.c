@@ -51,9 +51,11 @@ struct __attribute__((packed)) inst {
     RET,
     CALL,
     JUMP,
+    JUMP_OFFSET,
     SKIP_IF_EQUAL,
     SKIP_IF_NOT_EQUAL,
     SKIP_IF_REGS_EQUAL,
+    SKIP_IF_REGS_NOT_EQUAL,
     SET,
     ADD,
     LOAD_CHAR,
@@ -67,11 +69,14 @@ struct __attribute__((packed)) inst {
     REG_SHIFT_R,
     REG_SHIFT_L,
     SET_IDX,
+    RND,
     DISPLAY,
   } tag;
   union inst_data {
     // JUMP - 0x1NNN
     uint16_t jump; // NNN
+    // JUMP - 0xBNNN
+    uint16_t jump_offset; // NNN
     // CALL - 0x2NNN
     uint16_t call; // NNN
     // conditional skip takes register and value and asserts they are equal/not
@@ -79,6 +84,7 @@ struct __attribute__((packed)) inst {
     struct reg_val skip_if_equal;
     struct reg_val skip_if_not_equal;
     struct reg_reg skip_if_regs_equal;
+    struct reg_reg skip_if_regs_not_equal;
     // SET - 0x6XNN
     struct reg_val set; // reg = X, val = NN
     // ADD - 0x7XNN
@@ -95,6 +101,7 @@ struct __attribute__((packed)) inst {
     struct reg_reg reg_sub_n;
     struct reg_reg reg_shift_r;
     struct reg_reg reg_shift_l;
+    struct reg_val rnd;
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
       u_int reg_x : 4;  // X
@@ -359,10 +366,24 @@ struct inst decode(uint16_t inst) {
           }};
     }
   case 0x9:
-    return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
+    return (struct inst){.tag = SKIP_IF_REGS_NOT_EQUAL,
+                         .data = {
+                             .skip_if_regs_not_equal = {.reg1 = NIBBLE2(inst),
+                                                        .reg2 = NIBBLE3(inst)},
+                         }};
   case 0xA:
     // SET_IDX - 0xANNN set index reg to NNN
     return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
+  case 0xB:
+    // JUMP_OFFSET - Jump to location nnn + V0
+    return (struct inst){.tag = JUMP_OFFSET,
+                         .data = {.jump_offset = LOWER12(inst)}};
+  case 0xC:
+    // RND - Set Vx = random byte AND kk
+    return (struct inst){
+        .tag = RND,
+        .data = {.rnd = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
+
   case 0xD:
     // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
     return (struct inst){.tag = DISPLAY,
