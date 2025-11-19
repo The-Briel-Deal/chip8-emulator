@@ -241,6 +241,14 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {.hex_char = NIBBLE2(inst) }                      \
   }
+#define XYH_INST(inst_tag)                                                     \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {                                                 \
+      .display = {.reg_x = NIBBLE2(inst),                                      \
+                  .reg_y = NIBBLE3(inst),                                      \
+                  .height = NIBBLE4(inst)}                                     \
+    }                                                                          \
+  }
 
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
@@ -273,10 +281,7 @@ struct inst decode(uint16_t inst) {
   case 0xC: return RV_INST(RND);
   case 0xD:
     // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
-    return (struct inst){.tag = DISPLAY,
-                         .data = {.display = {.reg_x = NIBBLE2(inst),
-                                              .reg_y = NIBBLE3(inst),
-                                              .height = NIBBLE4(inst)}}};
+    return XYH_INST(DISPLAY);
   case 0xF:
     switch (LOWER8(inst)) {
     case 0x29: return CH_INST(LOAD_CHAR);
