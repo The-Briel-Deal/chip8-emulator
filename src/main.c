@@ -279,9 +279,7 @@ struct inst decode(uint16_t inst) {
   case 0xA: return ADDR_INST(SET_IDX);
   case 0xB: return ADDR_INST(JUMP_OFFSET);
   case 0xC: return RV_INST(RND);
-  case 0xD:
-    // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
-    return XYH_INST(DISPLAY);
+  case 0xD: return XYH_INST(DISPLAY);
   case 0xF:
     switch (LOWER8(inst)) {
     case 0x29: return CH_INST(LOAD_CHAR);
