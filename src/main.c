@@ -73,11 +73,10 @@ struct __attribute__((packed)) inst {
     DISPLAY,
   } tag;
   union inst_data {
+    uint8_t hex_char;
     uint16_t addr;
     struct reg_val reg_val;
     struct reg_reg reg_reg;
-
-    uint8_t load_char;
 
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
@@ -238,6 +237,10 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
       .reg_reg = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},               \
     }                                                                          \
   }
+#define CH_INST(inst_tag)                                                      \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {.hex_char = NIBBLE2(inst) }                      \
+  }
 
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
@@ -276,12 +279,10 @@ struct inst decode(uint16_t inst) {
                                               .height = NIBBLE4(inst)}}};
   case 0xF:
     switch (LOWER8(inst)) {
-    case 0x29:
-      return (struct inst){.tag = LOAD_CHAR,
-                           .data = {.load_char = NIBBLE2(inst)}};
+    case 0x29: return CH_INST(LOAD_CHAR);
     }
   }
-  return (struct inst){.tag = UNKNOWN};
+  return VOID_INST(UNKNOWN);
 }
 #undef NIBBLE1
 #undef NIBBLE2
@@ -321,7 +322,7 @@ void execute(struct state *state, struct inst inst) {
   case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; break;
   case SET_IDX: state->index_reg = inst.data.addr; break;
   case LOAD_CHAR: {
-    uint8_t hex_char = state->regs[inst.data.load_char];
+    uint8_t hex_char = state->regs[inst.data.hex_char];
     state->index_reg = HEX_CHARS_START + (5 * hex_char);
     break;
   }
@@ -363,7 +364,7 @@ void disassemble_inst(struct inst inst) {
     printf("ADD v%x += %d", inst.data.reg_val.reg, inst.data.reg_val.val);
     break;
   case SET_IDX: printf("SET_IDX 0x%03x", inst.data.addr); break;
-  case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.load_char); break;
+  case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.hex_char); break;
   case DISPLAY:
     printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
            inst.data.display.reg_y, inst.data.display.height);
