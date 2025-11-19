@@ -74,12 +74,11 @@ struct __attribute__((packed)) inst {
   } tag;
   union inst_data {
     uint16_t addr;
-    struct reg_val skip_if_equal;
-    struct reg_val skip_if_not_equal;
+    struct reg_val reg_val;
+
     struct reg_reg skip_if_regs_equal;
     struct reg_reg skip_if_regs_not_equal;
-    struct reg_val set;
-    struct reg_val add;
+
     uint8_t load_char;
     struct reg_reg load_reg_into_reg;
     struct reg_reg reg_bitwise_or;
@@ -90,7 +89,7 @@ struct __attribute__((packed)) inst {
     struct reg_reg reg_sub_n;
     struct reg_reg reg_shift_r;
     struct reg_reg reg_shift_l;
-    struct reg_val rnd;
+
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
       u_int reg_x : 4;  // X
@@ -141,9 +140,7 @@ int main(int argc, char **argv) {
       }
       run_mode = DISASSEMBLE;
       break;
-    case 'f':
-      filename = optarg;
-      break;
+    case 'f': filename = optarg; break;
     case '?':
       if (optopt == 'f')
         fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -152,15 +149,12 @@ int main(int argc, char **argv) {
       else
         fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
       return 1;
-    default:
-      abort();
+    default: abort();
     }
 
   switch (run_mode) {
-  case EXECUTE:
-    return execute_entry(filename);
-  case DISASSEMBLE:
-    return disassemble_entry(filename);
+  case EXECUTE: return execute_entry(filename);
+  case DISASSEMBLE: return disassemble_entry(filename);
   case UNSET:
     fprintf(stderr, "Run Mode unset, please specify either `-e` to execute or "
                     "`-d` to disassemble.\n");
@@ -237,37 +231,29 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
 #define LOWER8(inst) (inst & 0x00FF) >> 0
 #define LOWER12(inst) (inst & 0x0FFF) >> 0
 
+#define VOID_INST(inst_tag)                                                    \
+  (struct inst) { .tag = inst_tag }
 #define ADDR_INST(inst_tag)                                                    \
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {.addr = LOWER12(inst) }                          \
+  }
+#define RV_INST(inst_tag)                                                      \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {                                                 \
+      .reg_val = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}                   \
+    }                                                                          \
   }
 
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
   case 0x0:
-    if (inst == 0x00E0)
-      return (struct inst){.tag = CLEAR};
-    if (inst == 0x00EE)
-      return (struct inst){.tag = RET};
+    if (inst == 0x00E0) return VOID_INST(CLEAR);
+    if (inst == 0x00EE) return VOID_INST(RET);
     break;
-  case 0x1:
-    return ADDR_INST(JUMP);
-  case 0x2:
-    return ADDR_INST(CALL);
-  case 0x3:
-    // SKIP_IF_EQUAL
-    return (struct inst){
-        .tag = SKIP_IF_EQUAL,
-        .data = {
-            .skip_if_equal = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
-        }};
-  case 0x4:
-    // SKIP_IF_NOT_EQUAL
-    return (struct inst){
-        .tag = SKIP_IF_NOT_EQUAL,
-        .data = {
-            .skip_if_not_equal = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
-        }};
+  case 0x1: return ADDR_INST(JUMP);
+  case 0x2: return ADDR_INST(CALL);
+  case 0x3: return RV_INST(SKIP_IF_EQUAL);
+  case 0x4: return RV_INST(SKIP_IF_NOT_EQUAL);
   case 0x5:
     // SKIP_IF_REGS_EQUAL
     assert(NIBBLE4(0x0));
@@ -276,18 +262,9 @@ struct inst decode(uint16_t inst) {
                              .skip_if_regs_equal = {.reg1 = NIBBLE2(inst),
                                                     .reg2 = NIBBLE3(inst)},
                          }};
-  case 0x6:
-    // SET - 0x6XNN set reg vX to NN
-    return (struct inst){.tag = SET,
-                         .data = {
-                             .set = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
-                         }};
-  case 0x7:
-    // ADD - 0x7XNN add NN to reg vX
-    return (struct inst){.tag = ADD,
-                         .data = {
-                             .add = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
-                         }};
+  case 0x6: return RV_INST(SET);
+
+  case 0x7: return RV_INST(ADD);
   case 0x8:
     switch (NIBBLE4(inst)) {
     case 0x0:
@@ -363,16 +340,9 @@ struct inst decode(uint16_t inst) {
                              .skip_if_regs_not_equal = {.reg1 = NIBBLE2(inst),
                                                         .reg2 = NIBBLE3(inst)},
                          }};
-  case 0xA:
-    return ADDR_INST(SET_IDX);
-  case 0xB:
-    return ADDR_INST(JUMP_OFFSET);
-  case 0xC:
-    // RND - Set Vx = random byte AND kk
-    return (struct inst){
-        .tag = RND,
-        .data = {.rnd = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
-
+  case 0xA: return ADDR_INST(SET_IDX);
+  case 0xB: return ADDR_INST(JUMP_OFFSET);
+  case 0xC: return RV_INST(RND);
   case 0xD:
     // DISPLAY - 0xDXYN draw a sprite of height N at the position vX,vY
     return (struct inst){.tag = DISPLAY,
@@ -409,9 +379,7 @@ void execute(struct state *state, struct inst inst) {
   disassemble_inst(inst);
 #endif
   switch (inst.tag) {
-  case CLEAR:
-    memset(state->display, 0, sizeof(state->display));
-    break;
+  case CLEAR: memset(state->display, 0, sizeof(state->display)); break;
   case RET:
     assert(state->stack_top > 0);
     uint16_t return_addr = state->stack[state->stack_top--];
@@ -423,18 +391,10 @@ void execute(struct state *state, struct inst inst) {
     PUSH(ret_addr);
     state->pc = call_addr;
   }
-  case JUMP:
-    state->pc = inst.data.addr;
-    break;
-  case SET:
-    state->regs[inst.data.set.reg] = inst.data.set.val;
-    break;
-  case ADD:
-    state->regs[inst.data.add.reg] += inst.data.add.val;
-    break;
-  case SET_IDX:
-    state->index_reg = inst.data.addr;
-    break;
+  case JUMP: state->pc = inst.data.addr; break;
+  case SET: state->regs[inst.data.reg_val.reg] = inst.data.reg_val.val; break;
+  case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; break;
+  case SET_IDX: state->index_reg = inst.data.addr; break;
   case LOAD_CHAR: {
     uint8_t hex_char = state->regs[inst.data.load_char];
     state->index_reg = HEX_CHARS_START + (5 * hex_char);
@@ -453,56 +413,37 @@ void execute(struct state *state, struct inst inst) {
       uint64_t *display_line = &state->display[y_pos + i];
 
       // If this turns any bits off set VF to 1
-      if (*display_line & (((uint64_t)line) << x_pos))
-        state->regs[0xF] = 1;
+      if (*display_line & (((uint64_t)line) << x_pos)) state->regs[0xF] = 1;
 
       *display_line ^= (((uint64_t)line) << x_pos);
     }
     break;
   }
-  case UNKNOWN:
-    assert(false);
-    break;
-  default:
-    assert(false);
-    break;
+  case UNKNOWN: assert(false); break;
+  default: assert(false); break;
   }
 }
 
 // Code below is for disassembling
 void disassemble_inst(struct inst inst) {
   switch (inst.tag) {
-  case CLEAR:
-    printf("CLEAR");
-    break;
-  case RET:
-    printf("RET");
-    break;
-  case CALL:
-    printf("CALL 0x%04x", inst.data.addr);
-    break;
-  case JUMP:
-    printf("JUMP 0x%04x", inst.data.addr);
-    break;
+  case CLEAR: printf("CLEAR"); break;
+  case RET: printf("RET"); break;
+  case CALL: printf("CALL 0x%04x", inst.data.addr); break;
+  case JUMP: printf("JUMP 0x%04x", inst.data.addr); break;
   case SET:
-    printf("SET v%x to 0x%02x", inst.data.set.reg, inst.data.set.val);
+    printf("SET v%x to 0x%02x", inst.data.reg_val.reg, inst.data.reg_val.val);
     break;
   case ADD:
-    printf("ADD v%x += %d", inst.data.add.reg, inst.data.add.val);
+    printf("ADD v%x += %d", inst.data.reg_val.reg, inst.data.reg_val.val);
     break;
-  case SET_IDX:
-    printf("SET_IDX 0x%03x", inst.data.addr);
-    break;
-  case LOAD_CHAR:
-    printf("LOAD_CHAR v%x", inst.data.load_char);
-    break;
+  case SET_IDX: printf("SET_IDX 0x%03x", inst.data.addr); break;
+  case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.load_char); break;
   case DISPLAY:
     printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
            inst.data.display.reg_y, inst.data.display.height);
     break;
-  case UNKNOWN:
-    printf("UNKNOWN");
-    break;
+  case UNKNOWN: printf("UNKNOWN"); break;
   }
 
   printf("\n");
