@@ -268,7 +268,11 @@ struct inst decode(uint16_t inst) {
   }
 #define PUSH(val) state->stack[++state->stack_top] = val
 
+void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
+#ifdef DEBUG_DISASM
+  disassemble_inst(inst);
+#endif
   switch (inst.tag) {
   case CLEAR:
     memset(state->display, 0, sizeof(state->display));
