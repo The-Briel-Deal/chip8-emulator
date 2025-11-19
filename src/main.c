@@ -73,15 +73,13 @@ struct __attribute__((packed)) inst {
     DISPLAY,
   } tag;
   union inst_data {
-    uint16_t jump;
-    uint16_t jump_offset;
-    uint16_t call;
+    uint16_t addr;
     struct reg_val skip_if_equal;
     struct reg_val skip_if_not_equal;
     struct reg_reg skip_if_regs_equal;
     struct reg_reg skip_if_regs_not_equal;
     struct reg_val set;
-    struct reg_val add;    uint16_t set_idx;
+    struct reg_val add;
     uint8_t load_char;
     struct reg_reg load_reg_into_reg;
     struct reg_reg reg_bitwise_or;
@@ -239,6 +237,11 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
 #define LOWER8(inst) (inst & 0x00FF) >> 0
 #define LOWER12(inst) (inst & 0x0FFF) >> 0
 
+#define ADDR_INST(inst_tag)                                                    \
+  (struct inst) {                                                              \
+    .tag = inst_tag, .data = {.addr = LOWER12(inst) }                          \
+  }
+
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
   case 0x0:
@@ -248,11 +251,9 @@ struct inst decode(uint16_t inst) {
       return (struct inst){.tag = RET};
     break;
   case 0x1:
-    // JUMP - Jump is the only instruction that starts with 0x1
-    return (struct inst){.tag = JUMP, .data = {.jump = LOWER12(inst)}};
+    return ADDR_INST(JUMP);
   case 0x2:
-    // CALL - Call is the only instruction that starts with 0x2
-    return (struct inst){.tag = CALL, .data = {.call = LOWER12(inst)}};
+    return ADDR_INST(CALL);
   case 0x3:
     // SKIP_IF_EQUAL
     return (struct inst){
@@ -363,12 +364,9 @@ struct inst decode(uint16_t inst) {
                                                         .reg2 = NIBBLE3(inst)},
                          }};
   case 0xA:
-    // SET_IDX - 0xANNN set index reg to NNN
-    return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
+    return ADDR_INST(SET_IDX);
   case 0xB:
-    // JUMP_OFFSET - Jump to location nnn + V0
-    return (struct inst){.tag = JUMP_OFFSET,
-                         .data = {.jump_offset = LOWER12(inst)}};
+    return ADDR_INST(JUMP_OFFSET);
   case 0xC:
     // RND - Set Vx = random byte AND kk
     return (struct inst){
@@ -420,13 +418,13 @@ void execute(struct state *state, struct inst inst) {
     state->pc = return_addr;
     break;
   case CALL: {
-    uint16_t call_addr = inst.data.call;
+    uint16_t call_addr = inst.data.addr;
     uint16_t ret_addr = state->pc;
     PUSH(ret_addr);
     state->pc = call_addr;
   }
   case JUMP:
-    state->pc = inst.data.jump;
+    state->pc = inst.data.addr;
     break;
   case SET:
     state->regs[inst.data.set.reg] = inst.data.set.val;
@@ -435,7 +433,7 @@ void execute(struct state *state, struct inst inst) {
     state->regs[inst.data.add.reg] += inst.data.add.val;
     break;
   case SET_IDX:
-    state->index_reg = inst.data.set_idx;
+    state->index_reg = inst.data.addr;
     break;
   case LOAD_CHAR: {
     uint8_t hex_char = state->regs[inst.data.load_char];
@@ -481,10 +479,10 @@ void disassemble_inst(struct inst inst) {
     printf("RET");
     break;
   case CALL:
-    printf("CALL 0x%04x", inst.data.call);
+    printf("CALL 0x%04x", inst.data.addr);
     break;
   case JUMP:
-    printf("JUMP 0x%04x", inst.data.jump);
+    printf("JUMP 0x%04x", inst.data.addr);
     break;
   case SET:
     printf("SET v%x to 0x%02x", inst.data.set.reg, inst.data.set.val);
@@ -493,7 +491,7 @@ void disassemble_inst(struct inst inst) {
     printf("ADD v%x += %d", inst.data.add.reg, inst.data.add.val);
     break;
   case SET_IDX:
-    printf("SET_IDX 0x%03x", inst.data.set_idx);
+    printf("SET_IDX 0x%03x", inst.data.addr);
     break;
   case LOAD_CHAR:
     printf("LOAD_CHAR v%x", inst.data.load_char);
