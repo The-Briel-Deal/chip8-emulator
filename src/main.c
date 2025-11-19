@@ -38,6 +38,10 @@ struct reg_val {
   uint8_t reg; // X
   uint8_t val; // NN
 };
+struct reg_reg {
+  uint8_t reg1; // X
+  uint8_t reg2; // Y
+};
 
 struct __attribute__((packed)) inst {
   enum inst_tag : uint16_t {
@@ -47,9 +51,21 @@ struct __attribute__((packed)) inst {
     RET,
     CALL,
     JUMP,
+    SKIP_IF_EQUAL,
+    SKIP_IF_NOT_EQUAL,
+    SKIP_IF_REGS_EQUAL,
     SET,
     ADD,
     LOAD_CHAR,
+    LOAD_REG_INTO_REG,
+    REG_BITWISE_OR,
+    REG_BITWISE_AND,
+    REG_BITWISE_XOR,
+    REG_ADD,
+    REG_SUB,
+    REG_SUB_N,
+    REG_SHIFT_R,
+    REG_SHIFT_L,
     SET_IDX,
     DISPLAY,
   } tag;
@@ -58,6 +74,11 @@ struct __attribute__((packed)) inst {
     uint16_t jump; // NNN
     // CALL - 0x2NNN
     uint16_t call; // NNN
+    // conditional skip takes register and value and asserts they are equal/not
+    // equal.
+    struct reg_val skip_if_equal;
+    struct reg_val skip_if_not_equal;
+    struct reg_reg skip_if_regs_equal;
     // SET - 0x6XNN
     struct reg_val set; // reg = X, val = NN
     // ADD - 0x7XNN
@@ -65,6 +86,15 @@ struct __attribute__((packed)) inst {
     // SET_IDX - 0xANNN
     uint16_t set_idx; // NNN
     uint8_t load_char;
+    struct reg_reg load_reg_into_reg;
+    struct reg_reg reg_bitwise_or;
+    struct reg_reg reg_bitwise_and;
+    struct reg_reg reg_bitwise_xor;
+    struct reg_reg reg_add;
+    struct reg_reg reg_sub;
+    struct reg_reg reg_sub_n;
+    struct reg_reg reg_shift_r;
+    struct reg_reg reg_shift_l;
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
       u_int reg_x : 4;  // X
@@ -225,16 +255,109 @@ struct inst decode(uint16_t inst) {
   case 0x2:
     // CALL - Call is the only instruction that starts with 0x2
     return (struct inst){.tag = CALL, .data = {.call = LOWER12(inst)}};
+  case 0x3:
+    // SKIP_IF_EQUAL
+    return (struct inst){
+        .tag = SKIP_IF_EQUAL,
+        .data = {
+            .skip_if_equal = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
+        }};
+  case 0x4:
+    // SKIP_IF_NOT_EQUAL
+    return (struct inst){
+        .tag = SKIP_IF_NOT_EQUAL,
+        .data = {
+            .skip_if_not_equal = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
+        }};
+  case 0x5:
+    // SKIP_IF_REGS_EQUAL
+    assert(NIBBLE4(0x0));
+    return (struct inst){.tag = SKIP_IF_REGS_EQUAL,
+                         .data = {
+                             .skip_if_regs_equal = {.reg1 = NIBBLE2(inst),
+                                                    .reg2 = NIBBLE3(inst)},
+                         }};
   case 0x6:
     // SET - 0x6XNN set reg vX to NN
-    return (struct inst){
-        .tag = SET,
-        .data = {.set = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
+    return (struct inst){.tag = SET,
+                         .data = {
+                             .set = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
+                         }};
   case 0x7:
     // ADD - 0x7XNN add NN to reg vX
-    return (struct inst){
-        .tag = ADD,
-        .data = {.add = {.reg = NIBBLE2(inst), .val = LOWER8(inst)}}};
+    return (struct inst){.tag = ADD,
+                         .data = {
+                             .add = {.reg = NIBBLE2(inst), .val = LOWER8(inst)},
+                         }};
+  case 0x8:
+    switch (NIBBLE4(inst)) {
+    case 0x0:
+      // LOAD_REG_INTO_REG - Set Vx = Vy
+      return (struct inst){.tag = LOAD_REG_INTO_REG,
+                           .data = {
+                               .load_reg_into_reg = {.reg1 = NIBBLE2(inst),
+                                                     .reg2 = NIBBLE3(inst)},
+                           }};
+    case 0x1:
+      // REG_BITWISE_OR - Set Vx = Vx OR Vy
+      return (struct inst){
+          .tag = REG_BITWISE_OR,
+          .data = {
+              .reg_bitwise_or = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x2:
+      // REG_BITWISE_AND - Set Vx = Vx AND Vy
+      return (struct inst){
+          .tag = REG_BITWISE_AND,
+          .data = {
+              .reg_bitwise_and = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x3:
+      // REG_BITWISE_XOR - Set Vx = Vx XOR Vy
+      return (struct inst){
+          .tag = REG_BITWISE_XOR,
+          .data = {
+              .reg_bitwise_xor = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x4:
+      // REG_ADD - Set Vx = Vx + Vy, set VF = carry.
+      return (struct inst){
+          .tag = REG_ADD,
+          .data = {
+              .reg_add = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x5:
+      // REG_SUB - Set Vx = Vx + Vy, set VF = carry.
+      return (struct inst){
+          .tag = REG_SUB,
+          .data = {
+              .reg_sub = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x6:
+      // REG_SHIFT_R - Shift vX 1 to the right and set vF to the lost bit.
+      //
+      // TODO: If I want to support the superchip or chip-48 then i'll need to
+      // make this user configurable. On those interpreters Y was ignored.
+      return (struct inst){
+          .tag = REG_SHIFT_R,
+          .data = {
+              .reg_shift_r = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0xE:
+      // REG_SHIFT_L - Shift vX 1 to the right and set vF to the lost bit.
+      return (struct inst){
+          .tag = REG_SHIFT_L,
+          .data = {
+              .reg_shift_l = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    case 0x7:
+      // REG_SHIFT_L - Shift vX 1 to the right and set vF to the lost bit.
+      return (struct inst){
+          .tag = REG_SUB_N,
+          .data = {
+              .reg_sub_n = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},
+          }};
+    }
   case 0xA:
     // SET_IDX - 0xANNN set index reg to NNN
     return (struct inst){.tag = SET_IDX, .data = {.set_idx = LOWER12(inst)}};
@@ -326,6 +449,10 @@ void execute(struct state *state, struct inst inst) {
     break;
   }
   case UNKNOWN:
+    assert(false);
+    break;
+  default:
+    assert(false);
     break;
   }
 }
