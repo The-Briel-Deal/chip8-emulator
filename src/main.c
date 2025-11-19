@@ -327,10 +327,7 @@ void execute(struct state *state, struct inst inst) {
 }
 
 // Code below is for disassembling
-void disassemble_inst(uint8_t buf[4096], uint16_t *pc) {
-  uint16_t raw_inst = fetch(buf, pc);
-  printf("pc=0x%04x ri=0x%04x ", *pc, raw_inst);
-  struct inst inst = decode(raw_inst);
+void disassemble_inst(struct inst inst) {
   switch (inst.tag) {
   case CLEAR:
     printf("CLEAR");
@@ -379,7 +376,10 @@ int disassemble_entry(const char *filename) {
   uint16_t pc = PROG_START;
 
   while (pc < bytes_read + PROG_START) {
-    disassemble_inst(buf, &pc);
+    uint16_t raw_inst = fetch(buf, &pc);
+    printf("pc=0x%04x ri=0x%04x ", pc, raw_inst);
+    struct inst inst = decode(raw_inst);
+    disassemble_inst(inst);
   }
   return 0;
 }
