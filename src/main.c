@@ -327,6 +327,46 @@ void execute(struct state *state, struct inst inst) {
 }
 
 // Code below is for disassembling
+void disassemble_inst(uint8_t buf[4096], uint16_t *pc) {
+  uint16_t raw_inst = fetch(buf, pc);
+  printf("pc=0x%04x ri=0x%04x ", *pc, raw_inst);
+  struct inst inst = decode(raw_inst);
+  switch (inst.tag) {
+  case CLEAR:
+    printf("CLEAR");
+    break;
+  case RET:
+    printf("RET");
+    break;
+  case CALL:
+    printf("CALL 0x%04x", inst.data.call);
+    break;
+  case JUMP:
+    printf("JUMP 0x%04x", inst.data.jump);
+    break;
+  case SET:
+    printf("SET v%x to 0x%02x", inst.data.set.reg, inst.data.set.val);
+    break;
+  case ADD:
+    printf("ADD v%x += %d", inst.data.add.reg, inst.data.add.val);
+    break;
+  case SET_IDX:
+    printf("SET_IDX 0x%03x", inst.data.set_idx);
+    break;
+  case LOAD_CHAR:
+    printf("LOAD_CHAR v%x", inst.data.load_char);
+    break;
+  case DISPLAY:
+    printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
+           inst.data.display.reg_y, inst.data.display.height);
+    break;
+  case UNKNOWN:
+    printf("UNKNOWN");
+    break;
+  }
+
+  printf("\n");
+}
 
 int disassemble_entry(const char *filename) {
   printf("Disassembling filename='%s'\n", filename);
@@ -339,44 +379,7 @@ int disassemble_entry(const char *filename) {
   uint16_t pc = PROG_START;
 
   while (pc < bytes_read + PROG_START) {
-    uint16_t raw_inst = fetch(buf, &pc);
-    printf("pc=0x%04x ri=0x%04x ", pc, raw_inst);
-    struct inst inst = decode(raw_inst);
-    switch (inst.tag) {
-    case CLEAR:
-      printf("CLEAR");
-      break;
-    case RET:
-      printf("RET");
-      break;
-    case CALL:
-      printf("CALL 0x%04x", inst.data.call);
-      break;
-    case JUMP:
-      printf("JUMP 0x%04x", inst.data.jump);
-      break;
-    case SET:
-      printf("SET v%x to 0x%02x", inst.data.set.reg, inst.data.set.val);
-      break;
-    case ADD:
-      printf("ADD v%x += %d", inst.data.add.reg, inst.data.add.val);
-      break;
-    case SET_IDX:
-      printf("SET_IDX 0x%03x", inst.data.set_idx);
-      break;
-    case LOAD_CHAR:
-      printf("LOAD_CHAR v%x", inst.data.load_char);
-      break;
-    case DISPLAY:
-      printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
-             inst.data.display.reg_y, inst.data.display.height);
-      break;
-    case UNKNOWN:
-      printf("UNKNOWN");
-      break;
-    }
-
-    printf("\n");
+    disassemble_inst(buf, &pc);
   }
   return 0;
 }
