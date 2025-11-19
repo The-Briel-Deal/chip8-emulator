@@ -45,6 +45,7 @@ struct __attribute__((packed)) inst {
     JUMP,
     SET,
     ADD,
+    LOAD_CHAR,
     SET_IDX,
     DISPLAY,
   } tag;
@@ -59,6 +60,7 @@ struct __attribute__((packed)) inst {
     struct reg_val add; // reg = X, val = NN
     // SET_IDX - 0xANNN
     uint16_t set_idx; // NNN
+    uint8_t load_char;
     // DISPLAY - 0xDXYN
     struct __attribute__((packed)) display_data {
       u_int reg_x : 4;  // X
@@ -236,6 +238,12 @@ struct inst decode(uint16_t inst) {
                          .data = {.display = {.reg_x = NIBBLE2(inst),
                                               .reg_y = NIBBLE3(inst),
                                               .height = NIBBLE4(inst)}}};
+  case 0xF:
+    switch (LOWER8(inst)) {
+    case 0x29:
+      return (struct inst){.tag = LOAD_CHAR,
+                           .data = {.load_char = NIBBLE2(inst)}};
+    }
   }
   return (struct inst){.tag = UNKNOWN};
 }
