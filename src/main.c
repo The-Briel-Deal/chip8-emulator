@@ -73,24 +73,15 @@ struct __attribute__((packed)) inst {
     DISPLAY,
   } tag;
   union inst_data {
-    // JUMP - 0x1NNN
-    uint16_t jump; // NNN
-    // JUMP - 0xBNNN
-    uint16_t jump_offset; // NNN
-    // CALL - 0x2NNN
-    uint16_t call; // NNN
-    // conditional skip takes register and value and asserts they are equal/not
-    // equal.
+    uint16_t jump;
+    uint16_t jump_offset;
+    uint16_t call;
     struct reg_val skip_if_equal;
     struct reg_val skip_if_not_equal;
     struct reg_reg skip_if_regs_equal;
     struct reg_reg skip_if_regs_not_equal;
-    // SET - 0x6XNN
-    struct reg_val set; // reg = X, val = NN
-    // ADD - 0x7XNN
-    struct reg_val add; // reg = X, val = NN
-    // SET_IDX - 0xANNN
-    uint16_t set_idx; // NNN
+    struct reg_val set;
+    struct reg_val add;    uint16_t set_idx;
     uint8_t load_char;
     struct reg_reg load_reg_into_reg;
     struct reg_reg reg_bitwise_or;
