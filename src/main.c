@@ -23,6 +23,28 @@
 
 typedef uint64_t display[DISPLAY_HEIGHT];
 
+const uint8_t HEX_CHARS[] = {
+    /* clang-format off */
+  0b11110000,
+  0b10010000,
+  0b10010000,
+  0b10010000,
+  0b11110000,
+
+  0b00100000,
+  0b01100000,
+  0b00100000,
+  0b00100000,
+  0b01110000,
+
+  0b11110000,
+  0b00010000,
+  0b11110000,
+  0b10000000,
+  0b11110000,
+    /* clang-format on */
+};
+
 enum run_mode {
   UNSET = 0,
   EXECUTE,
