@@ -223,8 +223,8 @@ struct inst decode(uint16_t inst) {
     // JUMP - Jump is the only instruction that starts with 0x1
     return (struct inst){.tag = JUMP, .data = {.jump = LOWER12(inst)}};
   case 0x2:
-    // CALL - Jump is the only instruction that starts with 0x2
-    return (struct inst){.tag = CALL, .data = {.jump = LOWER12(inst)}};
+    // CALL - Call is the only instruction that starts with 0x2
+    return (struct inst){.tag = CALL, .data = {.call = LOWER12(inst)}};
   case 0x6:
     // SET - 0x6XNN set reg vX to NN
     return (struct inst){
