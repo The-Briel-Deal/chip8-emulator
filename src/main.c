@@ -27,7 +27,6 @@ const uint8_t HEX_CHARS[80];
 
 typedef uint64_t display[DISPLAY_HEIGHT];
 
-
 enum run_mode {
   UNSET = 0,
   EXECUTE,
@@ -165,6 +164,8 @@ void init_state(struct state *state) {
   state->pc = PROG_START;
   state->stack_top = 0;
   memset(state->display, 0, sizeof(state->display));
+
+  memcpy(&state->heap[HEX_CHARS_START], HEX_CHARS, sizeof(HEX_CHARS));
 }
 
 uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
@@ -295,6 +296,11 @@ void execute(struct state *state, struct inst inst) {
   case SET_IDX:
     state->index_reg = inst.data.set_idx;
     break;
+  case LOAD_CHAR: {
+    uint8_t hex_char = state->regs[inst.data.load_char];
+    state->index_reg = HEX_CHARS_START + (5 * hex_char);
+    break;
+  }
   case DISPLAY: {
     uint8_t x_pos = state->regs[inst.data.display.reg_x];
     uint8_t y_pos = state->regs[inst.data.display.reg_y];
@@ -340,6 +346,12 @@ int disassemble_entry(const char *filename) {
     case CLEAR:
       printf("CLEAR");
       break;
+    case RET:
+      printf("RET");
+      break;
+    case CALL:
+      printf("CALL 0x%04x", inst.data.call);
+      break;
     case JUMP:
       printf("JUMP 0x%04x", inst.data.jump);
       break;
@@ -351,6 +363,9 @@ int disassemble_entry(const char *filename) {
       break;
     case SET_IDX:
       printf("SET_IDX 0x%03x", inst.data.set_idx);
+      break;
+    case LOAD_CHAR:
+      printf("LOAD_CHAR v%x", inst.data.load_char);
       break;
     case DISPLAY:
       printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
