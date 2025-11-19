@@ -71,6 +71,8 @@ struct __attribute__((packed)) inst {
     SET_IDX,
     RND,
     DISPLAY,
+    SKIP_KEY_DOWN,
+    SKIP_KEY_UP
   } tag;
   union inst_data {
     uint8_t hex_char;
@@ -253,8 +255,10 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
 struct inst decode(uint16_t inst) {
   switch (NIBBLE1(inst)) {
   case 0x0:
-    if (inst == 0x00E0) return VOID_INST(CLEAR);
-    if (inst == 0x00EE) return VOID_INST(RET);
+    switch (LOWER8(inst)) {
+    case 0xE0: return VOID_INST(CLEAR);
+    case 0xEE: return VOID_INST(RET);
+    }
     break;
   case 0x1: return ADDR_INST(JUMP);
   case 0x2: return ADDR_INST(CALL);
@@ -275,15 +279,23 @@ struct inst decode(uint16_t inst) {
     case 0xE: return RR_INST(REG_SHIFT_L);
     case 0x7: return RR_INST(REG_SUB_N);
     }
+    break;
   case 0x9: return RR_INST(SKIP_IF_REGS_NOT_EQUAL);
   case 0xA: return ADDR_INST(SET_IDX);
   case 0xB: return ADDR_INST(JUMP_OFFSET);
   case 0xC: return RV_INST(RND);
   case 0xD: return XYH_INST(DISPLAY);
+  case 0xE:
+    switch (LOWER8(inst)) {
+    case 0x9E: return CH_INST(SKIP_KEY_DOWN);
+    case 0xA1: return CH_INST(SKIP_KEY_UP);
+    }
+    break;
   case 0xF:
     switch (LOWER8(inst)) {
     case 0x29: return CH_INST(LOAD_CHAR);
     }
+    break;
   }
   return VOID_INST(UNKNOWN);
 }
