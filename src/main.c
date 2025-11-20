@@ -330,16 +330,39 @@ struct inst decode(uint16_t inst) {
   }
 #define PUSH(val) state->stack[++state->stack_top] = val
 
-static void execute_ret(struct state *state) {
+static void ex_ret(struct state *state) {
   assert(state->stack_top > 0);
   uint16_t return_addr = state->stack[state->stack_top--];
   state->pc = return_addr;
 }
-static void execute_call(struct state *state, struct inst inst) {
+static void ex_call(struct state *state, struct inst inst) {
   uint16_t call_addr = inst.data.addr;
   uint16_t ret_addr = state->pc;
   PUSH(ret_addr);
   state->pc = call_addr;
+}
+static void ex_load_char(struct state *state, struct inst inst) {
+  uint8_t hex_char = state->regs[inst.data.reg];
+  assert(hex_char < 0xF);
+  state->index_reg = HEX_CHARS_START + (5 * hex_char);
+}
+static void ex_display(struct state *state, struct inst inst) {
+  uint8_t x_pos = state->regs[inst.data.display.vx];
+  uint8_t y_pos = state->regs[inst.data.display.vy];
+  uint8_t height = inst.data.display.height;
+
+  // If no bits are turned off set VF to 0
+  state->regs[0xF] = 0;
+  for (int i = 0; i < height; i++) {
+    uint8_t line = state->heap[state->index_reg + i];
+    REVERSE_BYTE(line);
+    uint64_t *display_line = &state->display[y_pos + i];
+
+    // If this turns any bits off set VF to 1
+    if (*display_line & (((uint64_t)line) << x_pos)) state->regs[0xF] = 1;
+
+    *display_line ^= (((uint64_t)line) << x_pos);
+  }
 }
 
 void disassemble_inst(struct inst inst);
@@ -349,37 +372,15 @@ void execute(struct state *state, struct inst inst) {
 #endif
   switch (inst.tag) {
   case CLEAR: memset(state->display, 0, sizeof(state->display)); return;
-  case RET: execute_ret(state); return;
-  case CALL: execute_call(state, inst); return;
+  case RET: ex_ret(state); return;
+  case CALL: ex_call(state, inst); return;
   case JUMP: state->pc = inst.data.addr; return;
   case SET: state->regs[inst.data.reg_val.reg] = inst.data.reg_val.val; return;
   case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; return;
   case SET_IDX: state->index_reg = inst.data.addr; return;
-  case LOAD_CHAR: {
-    uint8_t hex_char = state->regs[inst.data.reg];
-    state->index_reg = HEX_CHARS_START + (5 * hex_char);
-    return;
-  }
-  case DISPLAY: {
-    uint8_t x_pos = state->regs[inst.data.display.vx];
-    uint8_t y_pos = state->regs[inst.data.display.vy];
-    uint8_t height = inst.data.display.height;
-
-    // If no bits are turned off set VF to 0
-    state->regs[0xF] = 0;
-    for (int i = 0; i < height; i++) {
-      uint8_t line = state->heap[state->index_reg + i];
-      REVERSE_BYTE(line);
-      uint64_t *display_line = &state->display[y_pos + i];
-
-      // If this turns any bits off set VF to 1
-      if (*display_line & (((uint64_t)line) << x_pos)) state->regs[0xF] = 1;
-
-      *display_line ^= (((uint64_t)line) << x_pos);
-    }
-    return;
-  }
-  case UNKNOWN: assert(false); break;
+  case LOAD_CHAR: ex_load_char(state, inst); return;
+  case DISPLAY: ex_display(state, inst); return;
+  case UNKNOWN: assert(false); return;
   }
   assert(false);
 }
