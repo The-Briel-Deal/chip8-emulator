@@ -404,8 +404,16 @@ void execute(struct state *state, struct inst inst) {
     V(0xF) = (sum > 255);
     V(RR(inst).vx) = sum & 0xFF;
   }
-  case REG_SUB:          // TODO: impl
-  case REG_SUB_N:        // TODO: impl
+  case REG_SUB: {
+    V(0xF) = V(RR(inst).vx) > V(RR(inst).vy);
+    // I'm not 100% sure this will produce the right result, i'll need to test
+    // this with the opcode test once they are all done.
+    V(RR(inst).vx) -= V(RR(inst).vy);
+  }
+  case REG_SUB_N: {
+    V(0xF) = V(RR(inst).vy) > V(RR(inst).vx);
+    V(RR(inst).vx) = V(RR(inst).vy) - V(RR(inst).vx);
+  }
   case REG_SHIFT_R:      // TODO: impl
   case REG_SHIFT_L:      // TODO: impl
   case RND:              // TODO: impl
