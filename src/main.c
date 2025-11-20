@@ -330,6 +330,12 @@ struct inst decode(uint16_t inst) {
   }
 #define PUSH(val) state->stack[++state->stack_top] = val
 
+#define RV(inst) inst.data.reg_val
+#define RR(inst) inst.data.reg_reg
+#define ADDR(inst) inst.data.addr
+
+#define V(x) state->regs[x]
+
 static void ex_ret(struct state *state) {
   assert(state->stack_top > 0);
   uint16_t return_addr = state->stack[state->stack_top--];
@@ -374,10 +380,11 @@ void execute(struct state *state, struct inst inst) {
   case CLEAR: memset(state->display, 0, sizeof(state->display)); return;
   case RET: ex_ret(state); return;
   case CALL: ex_call(state, inst); return;
-  case JUMP: state->pc = inst.data.addr; return;
-  case SET: state->regs[inst.data.reg_val.reg] = inst.data.reg_val.val; return;
-  case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; return;
-  case SET_IDX: state->index_reg = inst.data.addr; return;
+  case JUMP: state->pc = ADDR(inst); return;
+  case JUMP_OFFSET: state->pc = ADDR(inst) + V(0); return;
+  case SET: V(RV(inst).reg) = RV(inst).val; return;
+  case ADD: V(RV(inst).reg) += RV(inst).val; return;
+  case SET_IDX: state->index_reg = ADDR(inst); return;
   case LOAD_CHAR: ex_load_char(state, inst); return;
   case DISPLAY: ex_display(state, inst); return;
   case UNKNOWN: assert(false); return;
