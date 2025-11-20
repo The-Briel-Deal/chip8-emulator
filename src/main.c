@@ -452,14 +452,15 @@ void disassemble_inst(struct inst inst) {
   case JUMP:
   case CALL:
   case SET_IDX:
-  case JUMP_OFFSET: 
-    break;
+  case JUMP_OFFSET: printf(" addr=%04x", inst.data.addr); break;
   // reg value
   case SKIP_IF_EQUAL:
   case SKIP_IF_NOT_EQUAL:
   case SET:
   case ADD:
-  case RND: break;
+  case RND:
+    printf(" v%x, %d", inst.data.reg_val.reg, inst.data.reg_val.val);
+    break;
   // reg reg
   case SKIP_IF_REGS_EQUAL:
   case LOAD_REG_INTO_REG:
@@ -471,11 +472,13 @@ void disassemble_inst(struct inst inst) {
   case REG_SHIFT_R:
   case REG_SHIFT_L:
   case REG_SUB_N:
-  case SKIP_IF_REGS_NOT_EQUAL: break;
+  case SKIP_IF_REGS_NOT_EQUAL:
+    printf(" v%x, v%x", inst.data.reg_reg.reg1, inst.data.reg_reg.reg2);
+    break;
   // Char reg
   case SKIP_KEY_DOWN:
   case SKIP_KEY_UP:
-  case LOAD_CHAR: break;
+  case LOAD_CHAR: printf(" v%x", inst.data.hex_char); break;
   // reg
   case LOAD_DELAY_TIMER:
   case LOAD_KEY_PRESS:
@@ -484,13 +487,16 @@ void disassemble_inst(struct inst inst) {
   case ADD_INDEX:
   case LOAD_BCD:
   case STORE_REGS:
-  case LOAD_REGS: break;
+  case LOAD_REGS: printf(" v%x", inst.data.reg); break;
   // XYH_INST
-  case DISPLAY: break;
+  case DISPLAY:
+    printf(" v%x,v%x height=%d", inst.data.display.reg_x,
+           inst.data.display.reg_y, inst.data.display.height);
+    break;
+  default: break;
   }
-}
 
-printf("\n");
+  printf("\n");
 }
 
 int disassemble_entry(const char *filename) {
