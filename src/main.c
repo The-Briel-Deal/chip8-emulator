@@ -447,7 +447,50 @@ void disassemble_inst(struct inst inst) {
     // case UNKNOWN: printf("UNKNOWN"); break;
   }
 
-  printf("\n");
+  switch (inst.tag) {
+  // addr
+  case JUMP:
+  case CALL:
+  case SET_IDX:
+  case JUMP_OFFSET: 
+    break;
+  // reg value
+  case SKIP_IF_EQUAL:
+  case SKIP_IF_NOT_EQUAL:
+  case SET:
+  case ADD:
+  case RND: break;
+  // reg reg
+  case SKIP_IF_REGS_EQUAL:
+  case LOAD_REG_INTO_REG:
+  case REG_BITWISE_OR:
+  case REG_BITWISE_AND:
+  case REG_BITWISE_XOR:
+  case REG_ADD:
+  case REG_SUB:
+  case REG_SHIFT_R:
+  case REG_SHIFT_L:
+  case REG_SUB_N:
+  case SKIP_IF_REGS_NOT_EQUAL: break;
+  // Char reg
+  case SKIP_KEY_DOWN:
+  case SKIP_KEY_UP:
+  case LOAD_CHAR: break;
+  // reg
+  case LOAD_DELAY_TIMER:
+  case LOAD_KEY_PRESS:
+  case SET_DELAY_TIMER:
+  case SET_SOUND_TIMER:
+  case ADD_INDEX:
+  case LOAD_BCD:
+  case STORE_REGS:
+  case LOAD_REGS: break;
+  // XYH_INST
+  case DISPLAY: break;
+  }
+}
+
+printf("\n");
 }
 
 int disassemble_entry(const char *filename) {
