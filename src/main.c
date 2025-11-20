@@ -380,6 +380,10 @@ static void ex_skip_if_not_eq(struct state *state, struct inst inst) {
   if (V(RV(inst).reg) != RV(inst).val) state->pc += 2;
 }
 
+static void ex_skip_if_regs_eq(struct state *state, struct inst inst) {
+  if (V(RR(inst).vx) == V(RR(inst).vy)) state->pc += 2;
+}
+
 void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
 #ifdef DEBUG_DISASM
@@ -393,12 +397,35 @@ void execute(struct state *state, struct inst inst) {
   case JUMP_OFFSET: state->pc = ADDR(inst) + V(0); return;
   case SKIP_IF_EQUAL: ex_skip_if_eq(state, inst); return;
   case SKIP_IF_NOT_EQUAL: ex_skip_if_not_eq(state, inst); return;
+  case SKIP_IF_REGS_EQUAL: ex_skip_if_regs_eq(state, inst); return;
   case SET: V(RV(inst).reg) = RV(inst).val; return;
   case ADD: V(RV(inst).reg) += RV(inst).val; return;
   case SET_IDX: state->index_reg = ADDR(inst); return;
   case LOAD_CHAR: ex_load_char(state, inst); return;
   case DISPLAY: ex_display(state, inst); return;
   case UNKNOWN: assert(false); return;
+  case SKIP_IF_REGS_NOT_EQUAL: // TODO: impl
+  case LOAD_REG_INTO_REG:      // TODO: impl
+  case REG_BITWISE_OR:         // TODO: impl
+  case REG_BITWISE_AND:        // TODO: impl
+  case REG_BITWISE_XOR:        // TODO: impl
+  case REG_ADD:                // TODO: impl
+  case REG_SUB:                // TODO: impl
+  case REG_SUB_N:              // TODO: impl
+  case REG_SHIFT_R:            // TODO: impl
+  case REG_SHIFT_L:            // TODO: impl
+  case RND:                    // TODO: impl
+  case SKIP_KEY_DOWN:          // TODO: impl
+  case SKIP_KEY_UP:            // TODO: impl
+  case LOAD_DELAY_TIMER:       // TODO: impl
+  case LOAD_KEY_PRESS:         // TODO: impl
+  case SET_DELAY_TIMER:        // TODO: impl
+  case SET_SOUND_TIMER:        // TODO: impl
+  case ADD_INDEX:              // TODO: impl
+  case LOAD_BCD:               // TODO: impl
+  case STORE_REGS:             // TODO: impl
+  case LOAD_REGS:              // TODO: impl
+    break;
   }
   assert(false);
 }
