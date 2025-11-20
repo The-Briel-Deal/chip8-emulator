@@ -388,26 +388,63 @@ void execute(struct state *state, struct inst inst) {
   }
 }
 
+#define PRINT_INST_NAME(inst_name)                                             \
+  case inst_name: printf(#inst_name); break
+
 // Code below is for disassembling
 void disassemble_inst(struct inst inst) {
   switch (inst.tag) {
-  case CLEAR: printf("CLEAR"); break;
-  case RET: printf("RET"); break;
-  case CALL: printf("CALL 0x%04x", inst.data.addr); break;
-  case JUMP: printf("JUMP 0x%04x", inst.data.addr); break;
-  case SET:
-    printf("SET v%x to 0x%02x", inst.data.reg_val.reg, inst.data.reg_val.val);
-    break;
-  case ADD:
-    printf("ADD v%x += %d", inst.data.reg_val.reg, inst.data.reg_val.val);
-    break;
-  case SET_IDX: printf("SET_IDX 0x%03x", inst.data.addr); break;
-  case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.hex_char); break;
-  case DISPLAY:
-    printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
-           inst.data.display.reg_y, inst.data.display.height);
-    break;
-  case UNKNOWN: printf("UNKNOWN"); break;
+    PRINT_INST_NAME(UNKNOWN);
+    PRINT_INST_NAME(CLEAR);
+    PRINT_INST_NAME(RET);
+    PRINT_INST_NAME(CALL);
+    PRINT_INST_NAME(JUMP);
+    PRINT_INST_NAME(JUMP_OFFSET);
+    PRINT_INST_NAME(SKIP_IF_EQUAL);
+    PRINT_INST_NAME(SKIP_IF_NOT_EQUAL);
+    PRINT_INST_NAME(SKIP_IF_REGS_EQUAL);
+    PRINT_INST_NAME(SKIP_IF_REGS_NOT_EQUAL);
+    PRINT_INST_NAME(SET);
+    PRINT_INST_NAME(ADD);
+    PRINT_INST_NAME(LOAD_CHAR);
+    PRINT_INST_NAME(LOAD_REG_INTO_REG);
+    PRINT_INST_NAME(REG_BITWISE_OR);
+    PRINT_INST_NAME(REG_BITWISE_AND);
+    PRINT_INST_NAME(REG_BITWISE_XOR);
+    PRINT_INST_NAME(REG_ADD);
+    PRINT_INST_NAME(REG_SUB);
+    PRINT_INST_NAME(REG_SUB_N);
+    PRINT_INST_NAME(REG_SHIFT_R);
+    PRINT_INST_NAME(REG_SHIFT_L);
+    PRINT_INST_NAME(SET_IDX);
+    PRINT_INST_NAME(RND);
+    PRINT_INST_NAME(DISPLAY);
+    PRINT_INST_NAME(SKIP_KEY_DOWN);
+    PRINT_INST_NAME(SKIP_KEY_UP);
+    PRINT_INST_NAME(LOAD_DELAY_TIMER);
+    PRINT_INST_NAME(LOAD_KEY_PRESS);
+    PRINT_INST_NAME(SET_DELAY_TIMER);
+    PRINT_INST_NAME(SET_SOUND_TIMER);
+    PRINT_INST_NAME(ADD_INDEX);
+    PRINT_INST_NAME(LOAD_BCD);
+    PRINT_INST_NAME(STORE_REGS);
+    PRINT_INST_NAME(LOAD_REGS);
+    // case RET: printf("RET"); break;
+    // case CALL: printf("CALL 0x%04x", inst.data.addr); break;
+    // case JUMP: printf("JUMP 0x%04x", inst.data.addr); break;
+    // case SET:
+    //   printf("SET v%x to 0x%02x", inst.data.reg_val.reg,
+    //   inst.data.reg_val.val); break;
+    // case ADD:
+    //   printf("ADD v%x += %d", inst.data.reg_val.reg, inst.data.reg_val.val);
+    //   break;
+    // case SET_IDX: printf("SET_IDX 0x%03x", inst.data.addr); break;
+    // case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.hex_char); break;
+    // case DISPLAY:
+    //   printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
+    //          inst.data.display.reg_y, inst.data.display.height);
+    //   break;
+    // case UNKNOWN: printf("UNKNOWN"); break;
   }
 
   printf("\n");
