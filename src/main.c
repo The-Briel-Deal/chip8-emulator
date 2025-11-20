@@ -330,32 +330,35 @@ struct inst decode(uint16_t inst) {
   }
 #define PUSH(val) state->stack[++state->stack_top] = val
 
+static void execute_ret(struct state *state) {
+  assert(state->stack_top > 0);
+  uint16_t return_addr = state->stack[state->stack_top--];
+  state->pc = return_addr;
+}
+static void execute_call(struct state *state, struct inst inst) {
+  uint16_t call_addr = inst.data.addr;
+  uint16_t ret_addr = state->pc;
+  PUSH(ret_addr);
+  state->pc = call_addr;
+}
+
 void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
 #ifdef DEBUG_DISASM
   disassemble_inst(inst);
 #endif
   switch (inst.tag) {
-  case CLEAR: memset(state->display, 0, sizeof(state->display)); break;
-  case RET:
-    assert(state->stack_top > 0);
-    uint16_t return_addr = state->stack[state->stack_top--];
-    state->pc = return_addr;
-    break;
-  case CALL: {
-    uint16_t call_addr = inst.data.addr;
-    uint16_t ret_addr = state->pc;
-    PUSH(ret_addr);
-    state->pc = call_addr;
-  }
-  case JUMP: state->pc = inst.data.addr; break;
-  case SET: state->regs[inst.data.reg_val.reg] = inst.data.reg_val.val; break;
-  case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; break;
-  case SET_IDX: state->index_reg = inst.data.addr; break;
+  case CLEAR: memset(state->display, 0, sizeof(state->display)); return;
+  case RET: execute_ret(state); return;
+  case CALL: execute_call(state, inst); return;
+  case JUMP: state->pc = inst.data.addr; return;
+  case SET: state->regs[inst.data.reg_val.reg] = inst.data.reg_val.val; return;
+  case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; return;
+  case SET_IDX: state->index_reg = inst.data.addr; return;
   case LOAD_CHAR: {
     uint8_t hex_char = state->regs[inst.data.reg];
     state->index_reg = HEX_CHARS_START + (5 * hex_char);
-    break;
+    return;
   }
   case DISPLAY: {
     uint8_t x_pos = state->regs[inst.data.display.vx];
@@ -374,11 +377,11 @@ void execute(struct state *state, struct inst inst) {
 
       *display_line ^= (((uint64_t)line) << x_pos);
     }
-    break;
+    return;
   }
   case UNKNOWN: assert(false); break;
-  default: assert(false); break;
   }
+  assert(false);
 }
 
 #define PRINT_INST_NAME(inst_name)                                             \
