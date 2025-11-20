@@ -372,6 +372,14 @@ static void ex_display(struct state *state, struct inst inst) {
   }
 }
 
+static void ex_skip_if_eq(struct state *state, struct inst inst) {
+  if (V(RV(inst).reg) == RV(inst).val) state->pc += 2;
+}
+
+static void ex_skip_if_not_eq(struct state *state, struct inst inst) {
+  if (V(RV(inst).reg) != RV(inst).val) state->pc += 2;
+}
+
 void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
 #ifdef DEBUG_DISASM
@@ -383,6 +391,8 @@ void execute(struct state *state, struct inst inst) {
   case CALL: ex_call(state, inst); return;
   case JUMP: state->pc = ADDR(inst); return;
   case JUMP_OFFSET: state->pc = ADDR(inst) + V(0); return;
+  case SKIP_IF_EQUAL: ex_skip_if_eq(state, inst); return;
+  case SKIP_IF_NOT_EQUAL: ex_skip_if_not_eq(state, inst); return;
   case SET: V(RV(inst).reg) = RV(inst).val; return;
   case ADD: V(RV(inst).reg) += RV(inst).val; return;
   case SET_IDX: state->index_reg = ADDR(inst); return;
