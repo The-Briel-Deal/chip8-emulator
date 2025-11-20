@@ -425,13 +425,13 @@ void execute(struct state *state, struct inst inst) {
     V(RR(inst).vx) >>= 1;
     return;
   }
-  case REG_SHIFT_L:  {
+  case REG_SHIFT_L: {
     // For some old roms I might need to set Vx = Vy
     V(0xF) = (V(RR(inst).vx) & 0b10000000) != 0;
     V(RR(inst).vx) <<= 1;
     return;
   }
-  case RND:              // TODO: impl
+  case RND: V(RV(inst).reg) = RV(inst).val & rand(); return;
   case SKIP_KEY_DOWN:    // TODO: impl
   case SKIP_KEY_UP:      // TODO: impl
   case LOAD_DELAY_TIMER: // TODO: impl
