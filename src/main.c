@@ -329,6 +329,7 @@ struct inst decode(uint16_t inst) {
     byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;                            \
   }
 #define PUSH(val) state->stack[++state->stack_top] = val
+#define POP() state->stack[state->stack_top--]
 
 #define RV(inst) inst.data.reg_val
 #define RR(inst) inst.data.reg_reg
@@ -338,11 +339,11 @@ struct inst decode(uint16_t inst) {
 
 static void ex_ret(struct state *state) {
   assert(state->stack_top > 0);
-  uint16_t return_addr = state->stack[state->stack_top--];
+  uint16_t return_addr = POP();
   state->pc = return_addr;
 }
 static void ex_call(struct state *state, struct inst inst) {
-  uint16_t call_addr = inst.data.addr;
+  uint16_t call_addr = ADDR(inst);
   uint16_t ret_addr = state->pc;
   PUSH(ret_addr);
   state->pc = call_addr;
@@ -353,8 +354,8 @@ static void ex_load_char(struct state *state, struct inst inst) {
   state->index_reg = HEX_CHARS_START + (5 * hex_char);
 }
 static void ex_display(struct state *state, struct inst inst) {
-  uint8_t x_pos = state->regs[inst.data.display.vx];
-  uint8_t y_pos = state->regs[inst.data.display.vy];
+  uint8_t x_pos = V(inst.data.display.vx);
+  uint8_t y_pos = V(inst.data.display.vy);
   uint8_t height = inst.data.display.height;
 
   // If no bits are turned off set VF to 0
