@@ -254,8 +254,8 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
 #define XYH_INST(inst_tag)                                                     \
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {                                                 \
-      .display = {.vx = NIBBLE2(inst),                                      \
-                  .vy = NIBBLE3(inst),                                      \
+      .display = {.vx = NIBBLE2(inst),                                         \
+                  .vy = NIBBLE3(inst),                                         \
                   .height = NIBBLE4(inst)}                                     \
     }                                                                          \
   }
@@ -429,14 +429,15 @@ void disassemble_inst(struct inst inst) {
   case JUMP:
   case CALL:
   case SET_IDX:
-  case JUMP_OFFSET: printf(" addr=%04x", inst.data.addr); break;
+  case JUMP_OFFSET: printf(" (addr) addr=%04x", inst.data.addr); break;
   // reg value
   case SKIP_IF_EQUAL:
   case SKIP_IF_NOT_EQUAL:
   case SET:
   case ADD:
   case RND:
-    printf(" v%x, %d", inst.data.reg_val.reg, inst.data.reg_val.val);
+    printf(" (reg_val) vx=v%x, val=%d", inst.data.reg_val.reg,
+           inst.data.reg_val.val);
     break;
   // reg reg
   case SKIP_IF_REGS_EQUAL:
@@ -450,7 +451,8 @@ void disassemble_inst(struct inst inst) {
   case REG_SHIFT_L:
   case REG_SUB_N:
   case SKIP_IF_REGS_NOT_EQUAL:
-    printf(" v%x, v%x", inst.data.reg_reg.vx, inst.data.reg_reg.vy);
+    printf(" (reg_reg) vx=v%x, vy=v%x", inst.data.reg_reg.vx,
+           inst.data.reg_reg.vy);
     break;
   // reg
   case SKIP_KEY_DOWN:
@@ -466,8 +468,8 @@ void disassemble_inst(struct inst inst) {
   case LOAD_REGS: printf(" v%x", inst.data.reg); break;
   // XYH_INST
   case DISPLAY:
-    printf(" v%x,v%x height=%d", inst.data.display.vx, inst.data.display.vy,
-           inst.data.display.height);
+    printf(" (display_data) vx=v%x, vy=v%x height=%d", inst.data.display.vx,
+           inst.data.display.vy, inst.data.display.height);
     break;
   default: break;
   }
