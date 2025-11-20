@@ -382,7 +382,7 @@ void execute(struct state *state, struct inst inst) {
 }
 
 #define PRINT_INST_NAME(inst_name)                                             \
-  case inst_name: printf(#inst_name); break
+  case inst_name: printf("%-10s", #inst_name); break
 
 // Code below is for disassembling
 void disassemble_inst(struct inst inst) {
@@ -429,7 +429,7 @@ void disassemble_inst(struct inst inst) {
   case JUMP:
   case CALL:
   case SET_IDX:
-  case JUMP_OFFSET: printf(" (addr) addr=%04x", inst.data.addr); break;
+  case JUMP_OFFSET: printf(" (addr)    addr=%04x", inst.data.addr); break;
   // reg value
   case SKIP_IF_EQUAL:
   case SKIP_IF_NOT_EQUAL:
@@ -465,13 +465,13 @@ void disassemble_inst(struct inst inst) {
   case ADD_INDEX:
   case LOAD_BCD:
   case STORE_REGS:
-  case LOAD_REGS: printf(" v%x", inst.data.reg); break;
+  case LOAD_REGS: printf(" (reg)     vx=v%x", inst.data.reg); break;
   // XYH_INST
   case DISPLAY:
-    printf(" (display_data) vx=v%x, vy=v%x height=%d", inst.data.display.vx,
+    printf(" (display) vx=v%x, vy=v%x height=%d", inst.data.display.vx,
            inst.data.display.vy, inst.data.display.height);
     break;
-  default: break;
+  default: printf(" (void)"); break;
   }
 
   printf("\n");
