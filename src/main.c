@@ -39,8 +39,13 @@ struct reg_val {
   uint8_t val; // NN
 };
 struct reg_reg {
-  uint8_t reg1; // X
-  uint8_t reg2; // Y
+  uint8_t vx;
+  uint8_t vy;
+};
+struct __attribute__((packed)) display_data {
+  u_int vx : 4;     // X
+  u_int vy : 4;     // Y
+  u_int height : 4; // N
 };
 
 struct __attribute__((packed)) inst {
@@ -84,24 +89,16 @@ struct __attribute__((packed)) inst {
   } tag;
   union inst_data {
     uint8_t reg;
-    uint8_t hex_char;
     uint16_t addr;
     struct reg_val reg_val;
     struct reg_reg reg_reg;
-
-    // DISPLAY - 0xDXYN
-    struct __attribute__((packed)) display_data {
-      u_int reg_x : 4;  // X
-      u_int reg_y : 4;  // Y
-      u_int height : 4; // N
-    } display;
+    struct display_data display;
   } data;
 };
 
 struct state {
   bool running;
 
-  // TODO: This is a single color for each pixel so we don't need 8 bits
   display display;
   uint16_t pc;
   uint16_t stack[16];
@@ -245,7 +242,7 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
 #define RR_INST(inst_tag)                                                      \
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {                                                 \
-      .reg_reg = {.reg1 = NIBBLE2(inst), .reg2 = NIBBLE3(inst)},               \
+      .reg_reg = {.vx = NIBBLE2(inst), .vy = NIBBLE3(inst)},                   \
     }                                                                          \
   }
 #define R_INST(inst_tag)                                                       \
@@ -254,15 +251,11 @@ uint16_t fetch(uint8_t heap[4096], uint16_t *pc) {
       .reg = NIBBLE2(inst),                                                    \
     }                                                                          \
   }
-#define CH_INST(inst_tag)                                                      \
-  (struct inst) {                                                              \
-    .tag = inst_tag, .data = {.hex_char = NIBBLE2(inst) }                      \
-  }
 #define XYH_INST(inst_tag)                                                     \
   (struct inst) {                                                              \
     .tag = inst_tag, .data = {                                                 \
-      .display = {.reg_x = NIBBLE2(inst),                                      \
-                  .reg_y = NIBBLE3(inst),                                      \
+      .display = {.vx = NIBBLE2(inst),                                      \
+                  .vy = NIBBLE3(inst),                                      \
                   .height = NIBBLE4(inst)}                                     \
     }                                                                          \
   }
@@ -302,8 +295,8 @@ struct inst decode(uint16_t inst) {
   case 0xD: return XYH_INST(DISPLAY);
   case 0xE:
     switch (LOWER8(inst)) {
-    case 0x9E: return CH_INST(SKIP_KEY_DOWN);
-    case 0xA1: return CH_INST(SKIP_KEY_UP);
+    case 0x9E: return R_INST(SKIP_KEY_DOWN);
+    case 0xA1: return R_INST(SKIP_KEY_UP);
     }
     break;
   case 0xF:
@@ -313,7 +306,7 @@ struct inst decode(uint16_t inst) {
     case 0x15: return R_INST(SET_DELAY_TIMER);
     case 0x18: return R_INST(SET_SOUND_TIMER);
     case 0x1E: return R_INST(ADD_INDEX);
-    case 0x29: return CH_INST(LOAD_CHAR); // Maybe this should be R_INST()
+    case 0x29: return R_INST(LOAD_CHAR); // Maybe this should be R_INST()
     case 0x33: return R_INST(LOAD_BCD);
     case 0x55: return R_INST(STORE_REGS);
     case 0x65: return R_INST(LOAD_REGS);
@@ -360,13 +353,13 @@ void execute(struct state *state, struct inst inst) {
   case ADD: state->regs[inst.data.reg_val.reg] += inst.data.reg_val.val; break;
   case SET_IDX: state->index_reg = inst.data.addr; break;
   case LOAD_CHAR: {
-    uint8_t hex_char = state->regs[inst.data.hex_char];
+    uint8_t hex_char = state->regs[inst.data.reg];
     state->index_reg = HEX_CHARS_START + (5 * hex_char);
     break;
   }
   case DISPLAY: {
-    uint8_t x_pos = state->regs[inst.data.display.reg_x];
-    uint8_t y_pos = state->regs[inst.data.display.reg_y];
+    uint8_t x_pos = state->regs[inst.data.display.vx];
+    uint8_t y_pos = state->regs[inst.data.display.vy];
     uint8_t height = inst.data.display.height;
 
     // If no bits are turned off set VF to 0
@@ -457,13 +450,12 @@ void disassemble_inst(struct inst inst) {
   case REG_SHIFT_L:
   case REG_SUB_N:
   case SKIP_IF_REGS_NOT_EQUAL:
-    printf(" v%x, v%x", inst.data.reg_reg.reg1, inst.data.reg_reg.reg2);
+    printf(" v%x, v%x", inst.data.reg_reg.vx, inst.data.reg_reg.vy);
     break;
-  // Char reg
+  // reg
   case SKIP_KEY_DOWN:
   case SKIP_KEY_UP:
-  case LOAD_CHAR: printf(" v%x", inst.data.hex_char); break;
-  // reg
+  case LOAD_CHAR:
   case LOAD_DELAY_TIMER:
   case LOAD_KEY_PRESS:
   case SET_DELAY_TIMER:
@@ -474,8 +466,8 @@ void disassemble_inst(struct inst inst) {
   case LOAD_REGS: printf(" v%x", inst.data.reg); break;
   // XYH_INST
   case DISPLAY:
-    printf(" v%x,v%x height=%d", inst.data.display.reg_x,
-           inst.data.display.reg_y, inst.data.display.height);
+    printf(" v%x,v%x height=%d", inst.data.display.vx, inst.data.display.vy,
+           inst.data.display.height);
     break;
   default: break;
   }
