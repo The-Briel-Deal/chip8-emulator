@@ -336,6 +336,9 @@ struct inst decode(uint16_t inst) {
 #define ADDR(inst) inst.data.addr
 
 #define V(x) state->regs[x]
+#define SKIP_IF(condition)                                                     \
+  if (condition) state->pc += 2;                                               \
+  return
 
 static void ex_ret(struct state *state) {
   assert(state->stack_top > 0);
@@ -372,18 +375,6 @@ static void ex_display(struct state *state, struct inst inst) {
   }
 }
 
-static void ex_skip_if_eq(struct state *state, struct inst inst) {
-  if (V(RV(inst).reg) == RV(inst).val) state->pc += 2;
-}
-
-static void ex_skip_if_not_eq(struct state *state, struct inst inst) {
-  if (V(RV(inst).reg) != RV(inst).val) state->pc += 2;
-}
-
-static void ex_skip_if_regs_eq(struct state *state, struct inst inst) {
-  if (V(RR(inst).vx) == V(RR(inst).vy)) state->pc += 2;
-}
-
 void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
 #ifdef DEBUG_DISASM
@@ -395,39 +386,41 @@ void execute(struct state *state, struct inst inst) {
   case CALL: ex_call(state, inst); return;
   case JUMP: state->pc = ADDR(inst); return;
   case JUMP_OFFSET: state->pc = ADDR(inst) + V(0); return;
-  case SKIP_IF_EQUAL: ex_skip_if_eq(state, inst); return;
-  case SKIP_IF_NOT_EQUAL: ex_skip_if_not_eq(state, inst); return;
-  case SKIP_IF_REGS_EQUAL: ex_skip_if_regs_eq(state, inst); return;
+  case SKIP_IF_EQUAL: SKIP_IF(V(RV(inst).reg) == RV(inst).val);
+  case SKIP_IF_NOT_EQUAL: SKIP_IF(V(RV(inst).reg) != RV(inst).val);
+  case SKIP_IF_REGS_EQUAL: SKIP_IF(V(RR(inst).vx) == V(RR(inst).vy));
+  case SKIP_IF_REGS_NOT_EQUAL: SKIP_IF(V(RR(inst).vx) != V(RR(inst).vy));
   case SET: V(RV(inst).reg) = RV(inst).val; return;
   case ADD: V(RV(inst).reg) += RV(inst).val; return;
   case SET_IDX: state->index_reg = ADDR(inst); return;
   case LOAD_CHAR: ex_load_char(state, inst); return;
   case DISPLAY: ex_display(state, inst); return;
-  case UNKNOWN: assert(false); return;
-  case SKIP_IF_REGS_NOT_EQUAL: // TODO: impl
-  case LOAD_REG_INTO_REG:      // TODO: impl
-  case REG_BITWISE_OR:         // TODO: impl
-  case REG_BITWISE_AND:        // TODO: impl
-  case REG_BITWISE_XOR:        // TODO: impl
-  case REG_ADD:                // TODO: impl
-  case REG_SUB:                // TODO: impl
-  case REG_SUB_N:              // TODO: impl
-  case REG_SHIFT_R:            // TODO: impl
-  case REG_SHIFT_L:            // TODO: impl
-  case RND:                    // TODO: impl
-  case SKIP_KEY_DOWN:          // TODO: impl
-  case SKIP_KEY_UP:            // TODO: impl
-  case LOAD_DELAY_TIMER:       // TODO: impl
-  case LOAD_KEY_PRESS:         // TODO: impl
-  case SET_DELAY_TIMER:        // TODO: impl
-  case SET_SOUND_TIMER:        // TODO: impl
-  case ADD_INDEX:              // TODO: impl
-  case LOAD_BCD:               // TODO: impl
-  case STORE_REGS:             // TODO: impl
-  case LOAD_REGS:              // TODO: impl
-    break;
+  case LOAD_REG_INTO_REG: V(RR(inst).vx) = V(RR(inst).vy); return;
+  case REG_BITWISE_OR: V(RR(inst).vx) |= V(RR(inst).vy); return;
+  case REG_BITWISE_AND: V(RR(inst).vx) &= V(RR(inst).vy); return;
+  case REG_BITWISE_XOR: V(RR(inst).vx) ^= V(RR(inst).vy); return;
+  case REG_ADD: {
+    uint16_t sum = V(RR(inst).vx) + V(RR(inst).vy);
+    V(0xF) = (sum > 255);
+    V(RR(inst).vx) = sum & 0xFF;
   }
-  assert(false);
+  case REG_SUB:          // TODO: impl
+  case REG_SUB_N:        // TODO: impl
+  case REG_SHIFT_R:      // TODO: impl
+  case REG_SHIFT_L:      // TODO: impl
+  case RND:              // TODO: impl
+  case SKIP_KEY_DOWN:    // TODO: impl
+  case SKIP_KEY_UP:      // TODO: impl
+  case LOAD_DELAY_TIMER: // TODO: impl
+  case LOAD_KEY_PRESS:   // TODO: impl
+  case SET_DELAY_TIMER:  // TODO: impl
+  case SET_SOUND_TIMER:  // TODO: impl
+  case ADD_INDEX:        // TODO: impl
+  case LOAD_BCD:         // TODO: impl
+  case STORE_REGS:       // TODO: impl
+  case LOAD_REGS:        // TODO: impl
+  case UNKNOWN: assert(false); return;
+  }
 }
 
 #define PRINT_INST_NAME(inst_name)                                             \
@@ -478,7 +471,7 @@ void disassemble_inst(struct inst inst) {
   case JUMP:
   case CALL:
   case SET_IDX:
-  case JUMP_OFFSET: printf(" (addr)    addr=%04x", inst.data.addr); break;
+  case JUMP_OFFSET: printf(" (addr)    addr=0x%04x", inst.data.addr); break;
   // reg value
   case SKIP_IF_EQUAL:
   case SKIP_IF_NOT_EQUAL:
