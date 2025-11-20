@@ -429,22 +429,6 @@ void disassemble_inst(struct inst inst) {
     PRINT_INST_NAME(LOAD_BCD);
     PRINT_INST_NAME(STORE_REGS);
     PRINT_INST_NAME(LOAD_REGS);
-    // case RET: printf("RET"); break;
-    // case CALL: printf("CALL 0x%04x", inst.data.addr); break;
-    // case JUMP: printf("JUMP 0x%04x", inst.data.addr); break;
-    // case SET:
-    //   printf("SET v%x to 0x%02x", inst.data.reg_val.reg,
-    //   inst.data.reg_val.val); break;
-    // case ADD:
-    //   printf("ADD v%x += %d", inst.data.reg_val.reg, inst.data.reg_val.val);
-    //   break;
-    // case SET_IDX: printf("SET_IDX 0x%03x", inst.data.addr); break;
-    // case LOAD_CHAR: printf("LOAD_CHAR v%x", inst.data.hex_char); break;
-    // case DISPLAY:
-    //   printf("DISPLAY v%x,v%x height=%d", inst.data.display.reg_x,
-    //          inst.data.display.reg_y, inst.data.display.height);
-    //   break;
-    // case UNKNOWN: printf("UNKNOWN"); break;
   }
 
   switch (inst.tag) {
