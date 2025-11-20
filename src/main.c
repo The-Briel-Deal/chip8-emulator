@@ -403,19 +403,34 @@ void execute(struct state *state, struct inst inst) {
     uint16_t sum = V(RR(inst).vx) + V(RR(inst).vy);
     V(0xF) = (sum > 255);
     V(RR(inst).vx) = sum & 0xFF;
+
+    return;
   }
   case REG_SUB: {
     V(0xF) = V(RR(inst).vx) > V(RR(inst).vy);
     // I'm not 100% sure this will produce the right result, i'll need to test
     // this with the opcode test once they are all done.
     V(RR(inst).vx) -= V(RR(inst).vy);
+
+    return;
   }
   case REG_SUB_N: {
     V(0xF) = V(RR(inst).vy) > V(RR(inst).vx);
     V(RR(inst).vx) = V(RR(inst).vy) - V(RR(inst).vx);
+    return;
   }
-  case REG_SHIFT_R:      // TODO: impl
-  case REG_SHIFT_L:      // TODO: impl
+  case REG_SHIFT_R: {
+    // For some old roms I might need to set Vx = Vy
+    V(0xF) = (V(RR(inst).vx) & 0b00000001) != 0;
+    V(RR(inst).vx) >>= 1;
+    return;
+  }
+  case REG_SHIFT_L:  {
+    // For some old roms I might need to set Vx = Vy
+    V(0xF) = (V(RR(inst).vx) & 0b10000000) != 0;
+    V(RR(inst).vx) <<= 1;
+    return;
+  }
   case RND:              // TODO: impl
   case SKIP_KEY_DOWN:    // TODO: impl
   case SKIP_KEY_UP:      // TODO: impl
