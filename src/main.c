@@ -432,6 +432,12 @@ void execute(struct state *state, struct inst inst) {
     return;
   }
   case RND: V(RV(inst).reg) = RV(inst).val & rand(); return;
+  case STORE_REGS:
+    memcpy(&state->heap[state->index_reg], &state->regs[0], inst.data.reg);
+    return;
+  case LOAD_REGS:
+    memcpy(&state->regs[0], &state->heap[state->index_reg], inst.data.reg);
+    return;
   case SKIP_KEY_DOWN:    // TODO: impl
   case SKIP_KEY_UP:      // TODO: impl
   case LOAD_DELAY_TIMER: // TODO: impl
@@ -440,8 +446,6 @@ void execute(struct state *state, struct inst inst) {
   case SET_SOUND_TIMER:  // TODO: impl
   case ADD_INDEX:        // TODO: impl
   case LOAD_BCD:         // TODO: impl
-  case STORE_REGS:       // TODO: impl
-  case LOAD_REGS:        // TODO: impl
   case UNKNOWN: assert(false); return;
   }
 }
