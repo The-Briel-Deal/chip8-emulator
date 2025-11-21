@@ -438,14 +438,23 @@ void execute(struct state *state, struct inst inst) {
   case LOAD_REGS:
     memcpy(&state->regs[0], &state->heap[state->index_reg], inst.data.reg);
     return;
+  case LOAD_BCD: {
+    uint8_t val = V(inst.data.reg);
+    state->heap[state->index_reg + 0] = (val / 100) % 10;
+    state->heap[state->index_reg + 1] = (val / 10) % 10;
+    state->heap[state->index_reg + 2] = (val / 1) % 10;
+    return;
+  }
+  case ADD_INDEX: {
+    state->index_reg += V(inst.data.reg);
+    return;
+  }
   case SKIP_KEY_DOWN:    // TODO: impl
   case SKIP_KEY_UP:      // TODO: impl
   case LOAD_DELAY_TIMER: // TODO: impl
   case LOAD_KEY_PRESS:   // TODO: impl
   case SET_DELAY_TIMER:  // TODO: impl
   case SET_SOUND_TIMER:  // TODO: impl
-  case ADD_INDEX:        // TODO: impl
-  case LOAD_BCD:         // TODO: impl
   case UNKNOWN: assert(false); return;
   }
 }
