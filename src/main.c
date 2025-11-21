@@ -401,17 +401,14 @@ void execute(struct state *state, struct inst inst) {
   case REG_BITWISE_XOR: V(RR(inst).vx) ^= V(RR(inst).vy); return;
   case REG_ADD: {
     uint16_t sum = V(RR(inst).vx) + V(RR(inst).vy);
-    V(0xF) = (sum > 255);
     V(RR(inst).vx) = sum & 0xFF;
-
+    V(0xF) = (sum > 255);
     return;
   }
   case REG_SUB: {
-    V(0xF) = V(RR(inst).vx) > V(RR(inst).vy);
-    // I'm not 100% sure this will produce the right result, i'll need to test
-    // this with the opcode test once they are all done.
+    uint8_t flag = V(RR(inst).vx) >= V(RR(inst).vy);
     V(RR(inst).vx) -= V(RR(inst).vy);
-
+    V(0xF) = flag;
     return;
   }
   case REG_SUB_N: {
