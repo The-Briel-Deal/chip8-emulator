@@ -108,6 +108,9 @@ struct state {
   uint16_t index_reg;
   uint8_t regs[16];
   uint8_t heap[4096];
+
+  uint8_t delay_timer;
+  uint8_t sound_timer;
 };
 
 int execute_entry(const char *filename);
@@ -184,6 +187,9 @@ void init_state(struct state *state) {
   memset(state->display, 0, sizeof(state->display));
 
   memcpy(&state->heap[HEX_CHARS_START], HEX_CHARS, sizeof(HEX_CHARS));
+
+  state->delay_timer = 0;
+  state->sound_timer = 0;
 }
 
 uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
@@ -207,7 +213,14 @@ uint64_t get_time_micro() {
   return res;
 }
 
-void tick(struct state *state) {}
+void tick(struct state *state) {
+  if (state->delay_timer > 0) {
+    state->delay_timer -= 1;
+  }
+  if (state->sound_timer > 0) {
+    state->sound_timer -= 1;
+  }
+}
 
 int main_loop(struct state *state) {
   uint64_t last_tick_micro = get_time_micro();
