@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <bits/time.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -6,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "raylib.h"
@@ -187,11 +189,36 @@ void init_state(struct state *state) {
 uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
 struct inst decode(uint16_t inst);
 void execute(struct state *state, struct inst inst);
-
 void draw_grid(display display);
 
+#define TICKS_PER_SEC 60
+#define MICROS_PER_SEC 1 * 1000 * 1000
+#define MICROS_PER_TICK MICROS_PER_SEC / TICKS_PER_SEC
+
+uint64_t get_time_micro() {
+  struct timespec time;
+  int e;
+  e = clock_gettime(CLOCK_MONOTONIC, &time);
+  assert(e == 0);
+
+  uint64_t res = 0;
+  res += time.tv_nsec / 1000;
+  res += time.tv_sec * MICROS_PER_SEC;
+  return res;
+}
+
+void tick(struct state *state) {}
+
 int main_loop(struct state *state) {
+  uint64_t last_tick_micro = get_time_micro();
+  uint64_t current_time_micro = last_tick_micro;
   while (!WindowShouldClose()) {
+    current_time_micro = get_time_micro();
+    if ((current_time_micro - last_tick_micro) > MICROS_PER_TICK) {
+      last_tick_micro = current_time_micro;
+      tick(state);
+    }
+
     uint16_t raw_inst = fetch(state->heap, &state->pc);
     struct inst inst = decode(raw_inst);
     execute(state, inst);
