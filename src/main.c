@@ -419,14 +419,16 @@ void execute(struct state *state, struct inst inst) {
   }
   case REG_SHIFT_R: {
     // For some old roms I might need to set Vx = Vy
-    V(0xF) = (V(RR(inst).vx) & 0b00000001) != 0;
+    uint8_t flag = (V(RR(inst).vx) & 0b00000001) != 0;
     V(RR(inst).vx) >>= 1;
+    V(0xF) = flag;
     return;
   }
   case REG_SHIFT_L: {
     // For some old roms I might need to set Vx = Vy
-    V(0xF) = (V(RR(inst).vx) & 0b10000000) != 0;
+    uint8_t flag = (V(RR(inst).vx) & 0b10000000) != 0;
     V(RR(inst).vx) <<= 1;
+    V(0xF) = flag;
     return;
   }
   case RND: V(RV(inst).reg) = RV(inst).val & rand(); return;
