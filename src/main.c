@@ -10,7 +10,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <pulse/pulseaudio.h>
+#include <pulse/simple.h>
 #include <raylib.h>
 
 #define DISPLAY_WIDTH 64
@@ -116,6 +116,8 @@ struct state {
 
   uint8_t delay_timer;
   uint8_t sound_timer;
+
+  pa_simple *s;
 };
 
 int execute_entry(const char *filename);
