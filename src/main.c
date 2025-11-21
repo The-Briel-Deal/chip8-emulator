@@ -433,10 +433,10 @@ void execute(struct state *state, struct inst inst) {
   }
   case RND: V(RV(inst).reg) = RV(inst).val & rand(); return;
   case STORE_REGS:
-    memcpy(&state->heap[state->index_reg], &state->regs[0], inst.data.reg);
+    memcpy(&state->heap[state->index_reg], &state->regs[0], inst.data.reg + 1);
     return;
   case LOAD_REGS:
-    memcpy(&state->regs[0], &state->heap[state->index_reg], inst.data.reg);
+    memcpy(&state->regs[0], &state->heap[state->index_reg], inst.data.reg + 1);
     return;
   case LOAD_BCD: {
     uint8_t val = V(inst.data.reg);
