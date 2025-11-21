@@ -412,8 +412,9 @@ void execute(struct state *state, struct inst inst) {
     return;
   }
   case REG_SUB_N: {
-    V(0xF) = V(RR(inst).vy) > V(RR(inst).vx);
+    uint8_t flag = V(RR(inst).vy) >= V(RR(inst).vx);
     V(RR(inst).vx) = V(RR(inst).vy) - V(RR(inst).vx);
+    V(0xF) = flag;
     return;
   }
   case REG_SHIFT_R: {
