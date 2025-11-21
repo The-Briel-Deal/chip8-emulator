@@ -10,7 +10,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "raylib.h"
+#include <pulse/pulseaudio.h>
+#include <raylib.h>
 
 #define DISPLAY_WIDTH 64
 #define DISPLAY_HEIGHT 32
@@ -24,6 +25,10 @@
 #define PROG_START 0x200
 
 #define HEX_CHARS_START 0x0
+
+#define TICKS_PER_SEC 60
+#define MICROS_PER_SEC 1 * 1000 * 1000
+#define MICROS_PER_TICK MICROS_PER_SEC / TICKS_PER_SEC
 
 const uint8_t HEX_CHARS[80];
 
@@ -163,23 +168,6 @@ int main(int argc, char **argv) {
   }
 }
 
-void init_state(struct state *state);
-int main_loop(struct state *state);
-
-int execute_entry(const char *filename) {
-  InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
-             "raylib [core] example - basic window");
-  struct state state;
-  init_state(&state);
-  FILE *f = fopen(filename, "r");
-  assert(f != NULL);
-  size_t bytes_read =
-      fread(&state.heap[PROG_START], sizeof(uint8_t), sizeof(state.heap), f);
-  assert(bytes_read != 0);
-  state.display[3] = 32;
-  return main_loop(&state);
-}
-
 void init_state(struct state *state) {
   state->running = true;
   state->pc = PROG_START;
@@ -191,15 +179,6 @@ void init_state(struct state *state) {
   state->delay_timer = 0;
   state->sound_timer = 0;
 }
-
-uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
-struct inst decode(uint16_t inst);
-void execute(struct state *state, struct inst inst);
-void draw_grid(display display);
-
-#define TICKS_PER_SEC 60
-#define MICROS_PER_SEC 1 * 1000 * 1000
-#define MICROS_PER_TICK MICROS_PER_SEC / TICKS_PER_SEC
 
 uint64_t get_time_micro() {
   struct timespec time;
@@ -222,6 +201,11 @@ void tick(struct state *state) {
   }
 }
 
+uint16_t fetch(uint8_t heap[4096], uint16_t *pc);
+struct inst decode(uint16_t inst);
+void execute(struct state *state, struct inst inst);
+void draw_grid(display display);
+
 int main_loop(struct state *state) {
   uint64_t last_tick_micro = get_time_micro();
   uint64_t current_time_micro = last_tick_micro;
@@ -238,6 +222,20 @@ int main_loop(struct state *state) {
     draw_grid(state->display);
   }
   return 0;
+}
+
+int execute_entry(const char *filename) {
+  InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
+             "raylib [core] example - basic window");
+  struct state state;
+  init_state(&state);
+  FILE *f = fopen(filename, "r");
+  assert(f != NULL);
+  size_t bytes_read =
+      fread(&state.heap[PROG_START], sizeof(uint8_t), sizeof(state.heap), f);
+  assert(bytes_read != 0);
+  state.display[3] = 32;
+  return main_loop(&state);
 }
 
 void draw_grid(display display) {
