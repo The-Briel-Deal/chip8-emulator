@@ -45,8 +45,9 @@
 int main() {
 
   /* The Sample format to use */
-  static const pa_sample_spec ss = {
-      .format = PA_SAMPLE_S16LE, .rate = DEFAULT_RATE, .channels = DEFAULT_CHANNELS};
+  static const pa_sample_spec ss = {.format = PA_SAMPLE_S16LE,
+                                    .rate = DEFAULT_RATE,
+                                    .channels = DEFAULT_CHANNELS};
 
   pa_simple *s = NULL;
   int ret = 1;
