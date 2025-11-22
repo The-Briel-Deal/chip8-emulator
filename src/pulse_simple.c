@@ -40,13 +40,13 @@
 #define DEFAULT_CHANNELS 2
 #define DEFAULT_VOLUME 0.7
 
-#define BUFSIZE 1024
+#define BUFSIZE DEFAULT_RATE * 4
 
 int main() {
 
   /* The Sample format to use */
   static const pa_sample_spec ss = {
-      .format = PA_SAMPLE_S16LE, .rate = 44100, .channels = 2};
+      .format = PA_SAMPLE_S16LE, .rate = DEFAULT_RATE, .channels = DEFAULT_CHANNELS};
 
   pa_simple *s = NULL;
   int ret = 1;
@@ -65,7 +65,7 @@ int main() {
 
   assert(frame_size == 4);
 
-  for (;;) {
+  for (int write_count = 0; write_count < 2; write_count++) {
     uint8_t buf[BUFSIZE];
     ssize_t r;
 
@@ -85,8 +85,8 @@ int main() {
       printf("data->accumulator=%lf\n", accum);
       if (accum >= M_PI_M2) accum -= M_PI_M2;
       int16_t val = sin(accum) * DEFAULT_VOLUME * 32767.0;
-      *(uint16_t*)(&buf[i]) = val;
-      *(uint16_t*)(&buf[i+2]) = val;
+      *(uint16_t *)(&buf[i]) = val;
+      *(uint16_t *)(&buf[i + 2]) = val;
 
       i += frame_size;
     }
