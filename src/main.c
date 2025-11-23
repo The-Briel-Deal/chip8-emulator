@@ -76,7 +76,7 @@ struct __attribute__((packed)) display_data {
 };
 
 struct __attribute__((packed)) inst {
-  enum inst_tag : uint16_t {
+  enum inst_tag {
     UNKNOWN = 0,
 
     CLEAR,
@@ -113,7 +113,7 @@ struct __attribute__((packed)) inst {
     LOAD_BCD,
     STORE_REGS,
     LOAD_REGS,
-  } tag;
+  } tag : 16;
   union inst_data {
     uint8_t reg;
     uint16_t addr;
@@ -592,9 +592,18 @@ void execute(struct state *state, struct inst inst) {
   case LOAD_CHAR: ex_load_char(state, inst); return;
   case DISPLAY: ex_display(state, inst); return;
   case LOAD_REG_INTO_REG: V(RR(inst).vx) = V(RR(inst).vy); return;
-  case REG_BITWISE_OR: V(RR(inst).vx) |= V(RR(inst).vy); return;
-  case REG_BITWISE_AND: V(RR(inst).vx) &= V(RR(inst).vy); return;
-  case REG_BITWISE_XOR: V(RR(inst).vx) ^= V(RR(inst).vy); return;
+  case REG_BITWISE_OR:
+    V(RR(inst).vx) |= V(RR(inst).vy);
+    V(0xF) = 0;
+    return;
+  case REG_BITWISE_AND:
+    V(RR(inst).vx) &= V(RR(inst).vy);
+    V(0xF) = 0;
+    return;
+  case REG_BITWISE_XOR:
+    V(RR(inst).vx) ^= V(RR(inst).vy);
+    V(0xF) = 0;
+    return;
   case REG_ADD: {
     uint16_t sum = V(RR(inst).vx) + V(RR(inst).vy);
     V(RR(inst).vx) = sum & 0xFF;
