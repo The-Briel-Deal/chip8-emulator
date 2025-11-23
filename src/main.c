@@ -140,6 +140,8 @@ struct state {
   pa_mainloop *pa_mainloop;
   pa_context *pa_context;
   pa_stream *pa_stream;
+
+  uint8_t key_waiting_for_release;
 };
 
 int execute_entry(const char *filename);
@@ -266,6 +268,7 @@ void init_state(struct state *state) {
   state->stack_top = 0;
   state->delay_timer = 0;
   state->sound_timer = 0;
+  state->key_waiting_for_release = 0xFF;
   memset(state->display, 0, sizeof(state->display));
   memcpy(&state->heap[HEX_CHARS_START], HEX_CHARS, sizeof(HEX_CHARS));
 
@@ -681,12 +684,15 @@ void execute(struct state *state, struct inst inst) {
     if (!is_key_down(V(inst.data.reg))) state->pc += 2;
     return;
   case LOAD_KEY_PRESS: {
-    uint8_t key = get_key_down();
-    // 0xFF means the key wasn't in the range 0x0-0xF
-    if (key == 0xFF)
-      state->pc -= 2;
-    else
-      V(inst.data.reg) = key;
+    // 0xFF means the key wasn't in the range 0x0-0xF or it nothing was pressed.
+    if (state->key_waiting_for_release == 0xFF) {
+      state->key_waiting_for_release = get_key_down();
+    } else if (!is_key_down(state->key_waiting_for_release)) {
+      V(inst.data.reg) = state->key_waiting_for_release;
+      state->key_waiting_for_release = 0xFF;
+      return;
+    }
+    state->pc -= 2;
     return;
   }
 
