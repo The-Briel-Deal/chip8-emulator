@@ -191,14 +191,21 @@ int main(int argc, char **argv) {
 }
 
 double accum = 0;
+static const pa_sample_spec PA_SAMPLE_SPEC = {.format = PA_SAMPLE_S16LE,
+                                              .rate = DEFAULT_RATE,
+                                              .channels = DEFAULT_CHANNELS};
+static const pa_buffer_attr PA_BUFFER_ATTR = {
+    .fragsize = (uint32_t)-1,
+    .maxlength = (uint32_t)-1,
+    .minreq = (uint32_t)-1,
+    .prebuf = (uint32_t)-1,
+    .tlength = (uint32_t)-1,
+};
 // I think this will be more than enough but I put assert below just in case.
 uint8_t buf[1024 * 1024];
-static const pa_sample_spec ss = {.format = PA_SAMPLE_S16LE,
-                                  .rate = DEFAULT_RATE,
-                                  .channels = DEFAULT_CHANNELS};
 void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
   assert(nbytes < sizeof(buf));
-  int frame_size = pa_frame_size(&ss);
+  int frame_size = pa_frame_size(&PA_SAMPLE_SPEC);
 
   for (int i = 0; i < nbytes;) {
     accum += M_PI_M2 * C_4_PITCH / DEFAULT_RATE;
@@ -214,66 +221,53 @@ void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
 }
 
 void pa_state_cb(pa_context *c, void *userdata) {
-  pa_context_state_t state;
-  int *pa_ready = userdata;
-  state = pa_context_get_state(c);
-  switch (state) {
+  struct state *state = userdata;
+
+  pa_context_state_t pa_state = pa_context_get_state(c);
+  switch (pa_state) {
   case PA_CONTEXT_FAILED:
-  case PA_CONTEXT_TERMINATED: *pa_ready = 2; break;
-  case PA_CONTEXT_READY: *pa_ready = 1; break;
+  case PA_CONTEXT_TERMINATED: exit(1);
+  case PA_CONTEXT_READY: {
+    state->pa_stream = pa_stream_new(state->pa_context, "chip8 emulator audio",
+                                     &PA_SAMPLE_SPEC, NULL);
+    pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
+
+    int r = pa_stream_connect_playback(state->pa_stream, NULL, &PA_BUFFER_ATTR,
+                                       PA_STREAM_AUTO_TIMING_UPDATE |
+                                           PA_STREAM_ADJUST_LATENCY |
+                                           PA_STREAM_AUTO_TIMING_UPDATE,
+                                       NULL, NULL);
+    if (r != 0)
+      printf("Error from pa_stream_connect_playback(): %s\n", pa_strerror(r));
+    break;
+  }
   default: break;
   }
 }
 
-static pa_buffer_attr ba = {
-    .fragsize = (uint32_t)-1,
-    .maxlength = (uint32_t)-1,
-    .minreq = (uint32_t)-1,
-    .prebuf = (uint32_t)-1,
-    .tlength = (uint32_t)-1,
-};
+void init_pulseaudio(struct state *state) {
+  // this is initialized in pa_state_cb once the context is ready
+  state->pa_stream = NULL;
+
+  // TODO: Free all of these objects
+  state->pa_mainloop = pa_mainloop_new();
+  pa_mainloop_api *pa_mainloop_api = pa_mainloop_get_api(state->pa_mainloop);
+
+  state->pa_context = pa_context_new(pa_mainloop_api, "chip8 emulator");
+  pa_context_set_state_callback(state->pa_context, pa_state_cb, state);
+  pa_context_connect(state->pa_context, NULL, 0, NULL);
+}
 
 void init_state(struct state *state) {
   state->running = true;
   state->pc = PROG_START;
   state->stack_top = 0;
-  memset(state->display, 0, sizeof(state->display));
-
-  memcpy(&state->heap[HEX_CHARS_START], HEX_CHARS, sizeof(HEX_CHARS));
-
   state->delay_timer = 0;
   state->sound_timer = 0;
+  memset(state->display, 0, sizeof(state->display));
+  memcpy(&state->heap[HEX_CHARS_START], HEX_CHARS, sizeof(HEX_CHARS));
 
-  // TODO: Free all of these objects
-  state->pa_mainloop = pa_mainloop_new();
-  pa_mainloop_api *pa_mainloop_api = pa_mainloop_get_api(state->pa_mainloop);
-  state->pa_context = pa_context_new(pa_mainloop_api, "chip8 emulator");
-  pa_context_connect(state->pa_context, NULL, 0, NULL);
-
-  int pa_ready = 0;
-
-  // This function defines a callback so the server will tell us it's state.
-  // Our callback will wait for the state to be ready.  The callback will
-  // modify the variable to 1 so we know when we have a connection and it's
-  // ready.
-  // If there's an error, the callback will set pa_ready to 2
-  pa_context_set_state_callback(state->pa_context, pa_state_cb, &pa_ready);
-  int r;
-  while (pa_ready == 0) {
-    pa_mainloop_iterate(state->pa_mainloop, 1, NULL);
-  }
-
-  state->pa_stream =
-      pa_stream_new(state->pa_context, "chip8 emulator audio", &ss, NULL);
-  pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
-
-  r = pa_stream_connect_playback(state->pa_stream, NULL, &ba,
-                                 PA_STREAM_AUTO_TIMING_UPDATE |
-                                     PA_STREAM_ADJUST_LATENCY |
-                                     PA_STREAM_AUTO_TIMING_UPDATE,
-                                 NULL, NULL);
-  if (r != 0)
-    printf("Error from pa_stream_connect_playback(): %s\n", pa_strerror(r));
+  init_pulseaudio(state);
 }
 
 uint64_t get_time_micro() {
@@ -289,6 +283,15 @@ uint64_t get_time_micro() {
 }
 
 void tick(struct state *state) {
+  if (state->pa_stream != NULL) {
+    if (state->sound_timer > 0 && pa_stream_is_corked(state->pa_stream)) {
+      // play
+      pa_stream_cork(state->pa_stream, false, NULL, NULL);
+    } else if (!pa_stream_is_corked(state->pa_stream)) {
+      // pause
+      pa_stream_cork(state->pa_stream, true, NULL, NULL);
+    }
+  }
   if (state->delay_timer > 0) {
     state->delay_timer -= 1;
   }
