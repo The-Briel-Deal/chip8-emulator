@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <bits/time.h>
 #include <ctype.h>
+#include <pulse/mainloop-api.h>
+#include <pulse/mainloop.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -10,7 +12,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <pulse/simple.h>
+#include <pulse/context.h>
+#include <pulse/error.h>
+#include <pulse/stream.h>
+
 #include <raylib.h>
 
 #define DISPLAY_WIDTH 64
@@ -29,6 +34,15 @@
 #define TICKS_PER_SEC 60
 #define MICROS_PER_SEC 1 * 1000 * 1000
 #define MICROS_PER_TICK MICROS_PER_SEC / TICKS_PER_SEC
+
+#define DEFAULT_RATE 44100
+#define DEFAULT_CHANNELS 2
+#define DEFAULT_VOLUME 0.7
+
+#define M_PI_M2 (M_PI + M_PI)
+
+#define C_4_PITCH 261.63
+#define AUDIO_BUFSIZE 1024 * 10
 
 const uint8_t HEX_CHARS[80];
 
@@ -117,7 +131,9 @@ struct state {
   uint8_t delay_timer;
   uint8_t sound_timer;
 
-  pa_simple *s;
+  pa_mainloop *pa_mainloop;
+  pa_context *pa_context;
+  pa_stream *pa_stream;
 };
 
 int execute_entry(const char *filename);
@@ -170,6 +186,11 @@ int main(int argc, char **argv) {
   }
 }
 
+void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
+  printf("GF_DEBUG: write_callback called\n");
+}
+
+
 void init_state(struct state *state) {
   state->running = true;
   state->pc = PROG_START;
@@ -180,6 +201,20 @@ void init_state(struct state *state) {
 
   state->delay_timer = 0;
   state->sound_timer = 0;
+
+  // TODO: Free all of these objects
+  state->pa_mainloop = pa_mainloop_new();
+  pa_mainloop_api *pa_mainloop_api = pa_mainloop_get_api(state->pa_mainloop);
+  state->pa_context = pa_context_new(pa_mainloop_api, "chip8 emulator");
+
+  static const pa_sample_spec ss = {.format = PA_SAMPLE_S16LE,
+                                    .rate = DEFAULT_RATE,
+                                    .channels = DEFAULT_CHANNELS};
+  state->pa_stream =
+      pa_stream_new(state->pa_context, "chip8 emulator audio", &ss, NULL);
+  pa_stream_connect_playback(state->pa_stream, NULL, NULL, 0, NULL, NULL);
+  pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
+  pa_stream_trigger(state->pa_stream, NULL, NULL);
 }
 
 uint64_t get_time_micro() {
@@ -217,6 +252,10 @@ int main_loop(struct state *state) {
       last_tick_micro = current_time_micro;
       tick(state);
     }
+
+    // Audio Start
+    pa_mainloop_iterate(state->pa_mainloop, 0, NULL);
+    // Audio End
 
     uint16_t raw_inst = fetch(state->heap, &state->pc);
     struct inst inst = decode(raw_inst);
