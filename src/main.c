@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <bits/time.h>
 #include <ctype.h>
-#include <pulse/mainloop-api.h>
-#include <pulse/mainloop.h>
+#include <math.h>
+#include <pulse/simple.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -13,7 +13,11 @@
 #include <unistd.h>
 
 #include <pulse/context.h>
+#include <pulse/def.h>
 #include <pulse/error.h>
+#include <pulse/mainloop-api.h>
+#include <pulse/mainloop.h>
+#include <pulse/sample.h>
 #include <pulse/stream.h>
 
 #include <raylib.h>
@@ -186,10 +190,54 @@ int main(int argc, char **argv) {
   }
 }
 
+double accum = 0;
+// I think this will be more than enough but I put assert below just in case.
+uint8_t buf[1024 * 1024];
+static const pa_sample_spec ss = {.format = PA_SAMPLE_S16LE,
+                                  .rate = DEFAULT_RATE,
+                                  .channels = DEFAULT_CHANNELS};
 void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
-  printf("GF_DEBUG: write_callback called\n");
+  assert(nbytes < sizeof(buf));
+  int frame_size = pa_frame_size(&ss);
+
+  for (int i = 0; i < nbytes;) {
+    accum += M_PI_M2 * C_4_PITCH / DEFAULT_RATE;
+    printf("data->accumulator=%lf\n", accum);
+    if (accum >= M_PI_M2) accum -= M_PI_M2;
+    int16_t val = sin(accum) * DEFAULT_VOLUME * 32767.0;
+    *(uint16_t *)(&buf[i]) = val;
+    *(uint16_t *)(&buf[i + 2]) = val;
+
+    i += frame_size;
+  }
+
+  pa_stream_write(p, buf, sizeof(buf), NULL, 0, PA_SEEK_RELATIVE);
 }
 
+void pa_state_cb(pa_context *c, void *userdata) {
+  pa_context_state_t state;
+  int *pa_ready = userdata;
+  state = pa_context_get_state(c);
+  switch (state) {
+    // These are just here for reference
+  case PA_CONTEXT_UNCONNECTED:
+  case PA_CONTEXT_CONNECTING:
+  case PA_CONTEXT_AUTHORIZING:
+  case PA_CONTEXT_SETTING_NAME:
+  default: break;
+  case PA_CONTEXT_FAILED:
+  case PA_CONTEXT_TERMINATED: *pa_ready = 2; break;
+  case PA_CONTEXT_READY: *pa_ready = 1; break;
+  }
+}
+
+static const pa_buffer_attr ba = {
+    .fragsize = (uint32_t)-1,
+    .maxlength = (uint32_t)-1,
+    .minreq = (uint32_t)-1,
+    .prebuf = (uint32_t)-1,
+    .tlength = (uint32_t)-1,
+};
 
 void init_state(struct state *state) {
   state->running = true;
@@ -206,15 +254,30 @@ void init_state(struct state *state) {
   state->pa_mainloop = pa_mainloop_new();
   pa_mainloop_api *pa_mainloop_api = pa_mainloop_get_api(state->pa_mainloop);
   state->pa_context = pa_context_new(pa_mainloop_api, "chip8 emulator");
+  pa_context_connect(state->pa_context, NULL, 0, NULL);
 
-  static const pa_sample_spec ss = {.format = PA_SAMPLE_S16LE,
-                                    .rate = DEFAULT_RATE,
-                                    .channels = DEFAULT_CHANNELS};
+  int pa_ready = 0;
+
+  // This function defines a callback so the server will tell us it's state.
+  // Our callback will wait for the state to be ready.  The callback will
+  // modify the variable to 1 so we know when we have a connection and it's
+  // ready.
+  // If there's an error, the callback will set pa_ready to 2
+  pa_context_set_state_callback(state->pa_context, pa_state_cb, &pa_ready);
+  int r;
+  while (pa_ready == 0) {
+    pa_mainloop_iterate(state->pa_mainloop, 1, NULL);
+  }
+
   state->pa_stream =
       pa_stream_new(state->pa_context, "chip8 emulator audio", &ss, NULL);
-  pa_stream_connect_playback(state->pa_stream, NULL, NULL, 0, NULL, NULL);
   pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
-  pa_stream_trigger(state->pa_stream, NULL, NULL);
+
+  r = pa_stream_connect_playback(
+      state->pa_stream, NULL, &ba,
+      PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_AUTO_TIMING_UPDATE, NULL, NULL);
+  if (r != 0)
+    printf("Error from pa_stream_connect_playback(): %s\n", pa_strerror(r));
 }
 
 uint64_t get_time_micro() {
