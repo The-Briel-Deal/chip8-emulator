@@ -36,7 +36,9 @@
 #define HEX_CHARS_START 0x0
 
 #define TICKS_PER_SEC 60
-#define MICROS_PER_SEC 1 * 1000 * 1000
+#define MILLIS_PER_SEC 1 * 1000
+#define MICROS_PER_SEC MILLIS_PER_SEC * 1000
+#define NANOS_PER_SEC MICROS_PER_SEC * 1000
 #define MICROS_PER_TICK MICROS_PER_SEC / TICKS_PER_SEC
 
 #define DEFAULT_RATE 44100
@@ -324,6 +326,8 @@ int main_loop(struct state *state) {
     struct inst inst = decode(raw_inst);
     execute(state, inst);
     draw_grid(state->display);
+    struct timespec delay = {.tv_sec = 0, .tv_nsec = (NANOS_PER_SEC) / 700 };
+    nanosleep(&delay, NULL);
   }
   return 0;
 }
