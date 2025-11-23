@@ -232,11 +232,11 @@ void pa_state_cb(pa_context *c, void *userdata) {
                                      &PA_SAMPLE_SPEC, NULL);
     pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
 
-    int r = pa_stream_connect_playback(state->pa_stream, NULL, &PA_BUFFER_ATTR,
-                                       PA_STREAM_AUTO_TIMING_UPDATE |
-                                           PA_STREAM_ADJUST_LATENCY |
-                                           PA_STREAM_AUTO_TIMING_UPDATE,
-                                       NULL, NULL);
+    int r = pa_stream_connect_playback(
+        state->pa_stream, NULL, &PA_BUFFER_ATTR,
+        PA_STREAM_START_CORKED | PA_STREAM_AUTO_TIMING_UPDATE |
+            PA_STREAM_ADJUST_LATENCY | PA_STREAM_AUTO_TIMING_UPDATE,
+        NULL, NULL);
     if (r != 0)
       printf("Error from pa_stream_connect_playback(): %s\n", pa_strerror(r));
     break;
@@ -287,7 +287,8 @@ void tick(struct state *state) {
     if (state->sound_timer > 0 && pa_stream_is_corked(state->pa_stream)) {
       // play
       pa_stream_cork(state->pa_stream, false, NULL, NULL);
-    } else if (!pa_stream_is_corked(state->pa_stream)) {
+    }
+    if (state->sound_timer == 0 && !pa_stream_is_corked(state->pa_stream)) {
       // pause
       pa_stream_cork(state->pa_stream, true, NULL, NULL);
     }
