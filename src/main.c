@@ -546,7 +546,7 @@ bool is_key_down(uint8_t key) {
   case 0xD: return IsKeyDown(KEY_R);
   case 0xE: return IsKeyDown(KEY_F);
   case 0xF: return IsKeyDown(KEY_V);
-  default: return 0xFF;
+  default: return false;
   }
 }
 uint8_t get_key_down() {
@@ -567,7 +567,7 @@ uint8_t get_key_down() {
   case KEY_R: return 0xD;
   case KEY_F: return 0xE;
   case KEY_V: return 0xF;
-  default: return false;
+  default: return 0xFF;
   }
 }
 
