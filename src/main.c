@@ -510,13 +510,17 @@ static void ex_display(struct state *state, struct inst inst) {
   struct timespec delay = {.tv_sec = 0, .tv_nsec = (NANOS_PER_SEC) / 60};
   nanosleep(&delay, NULL);
 
-  uint8_t x_pos = V(inst.data.display.vx);
-  uint8_t y_pos = V(inst.data.display.vy);
+  uint8_t x_pos = V(inst.data.display.vx) % 64;
+  uint8_t y_pos = V(inst.data.display.vy) % 32;
   uint8_t height = inst.data.display.height;
 
   // If no bits are turned off set VF to 0
   state->regs[0xF] = 0;
   for (int i = 0; i < height; i++) {
+    if (y_pos + i >= DISPLAY_HEIGHT) {
+      return;
+    }
+
     uint8_t line = state->heap[state->index_reg + i];
     REVERSE_BYTE(line);
     uint64_t *display_line = &state->display[y_pos + i];
