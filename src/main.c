@@ -517,6 +517,56 @@ static void ex_display(struct state *state, struct inst inst) {
   }
 }
 
+/*
+ *  1 2 3 C    1 2 3 4
+ *  4 5 6 D    Q W E R
+ *  7 8 9 E => A S D F
+ *  A 0 B F    Z X C V
+ */
+bool is_key_down(uint8_t key) {
+  assert(key <= 0xF);
+  switch (key) {
+  case 0x0: return IsKeyDown(KEY_X);
+  case 0x1: return IsKeyDown(KEY_ONE);
+  case 0x2: return IsKeyDown(KEY_TWO);
+  case 0x3: return IsKeyDown(KEY_THREE);
+  case 0x4: return IsKeyDown(KEY_Q);
+  case 0x5: return IsKeyDown(KEY_W);
+  case 0x6: return IsKeyDown(KEY_E);
+  case 0x7: return IsKeyDown(KEY_A);
+  case 0x8: return IsKeyDown(KEY_S);
+  case 0x9: return IsKeyDown(KEY_D);
+  case 0xA: return IsKeyDown(KEY_Z);
+  case 0xB: return IsKeyDown(KEY_C);
+  case 0xC: return IsKeyDown(KEY_FOUR);
+  case 0xD: return IsKeyDown(KEY_R);
+  case 0xE: return IsKeyDown(KEY_F);
+  case 0xF: return IsKeyDown(KEY_V);
+  default: return 0xFF;
+  }
+}
+uint8_t get_key_down() {
+  switch (GetKeyPressed()) {
+  case KEY_X: return 0x0;
+  case KEY_ONE: return 0x1;
+  case KEY_TWO: return 0x2;
+  case KEY_THREE: return 0x3;
+  case KEY_Q: return 0x4;
+  case KEY_W: return 0x5;
+  case KEY_E: return 0x6;
+  case KEY_A: return 0x7;
+  case KEY_S: return 0x8;
+  case KEY_D: return 0x9;
+  case KEY_Z: return 0xA;
+  case KEY_C: return 0xB;
+  case KEY_FOUR: return 0xC;
+  case KEY_R: return 0xD;
+  case KEY_F: return 0xE;
+  case KEY_V: return 0xF;
+  default: return false;
+  }
+}
+
 void disassemble_inst(struct inst inst);
 void execute(struct state *state, struct inst inst) {
 #ifdef DEBUG_DISASM
@@ -591,12 +641,25 @@ void execute(struct state *state, struct inst inst) {
     state->index_reg += V(inst.data.reg);
     return;
   }
-  case SKIP_KEY_DOWN:    // TODO: impl
-  case SKIP_KEY_UP:      // TODO: impl
-  case LOAD_DELAY_TIMER: // TODO: impl
-  case LOAD_KEY_PRESS:   // TODO: impl
-  case SET_DELAY_TIMER:  // TODO: impl
-  case SET_SOUND_TIMER:  // TODO: impl
+  case SET_DELAY_TIMER: state->delay_timer = V(inst.data.reg); return;
+  case LOAD_DELAY_TIMER: V(inst.data.reg) = state->delay_timer; return;
+  case SET_SOUND_TIMER: state->sound_timer = V(inst.data.reg); return;
+  case SKIP_KEY_DOWN:
+    if (is_key_down(V(inst.data.reg))) state->pc += 2;
+    return;
+  case SKIP_KEY_UP:
+    if (!is_key_down(V(inst.data.reg))) state->pc += 2;
+    return;
+  case LOAD_KEY_PRESS: {
+    uint8_t key = get_key_down();
+    // 0xFF means the key wasn't in the range 0x0-0xF
+    if (key == 0xFF)
+      state->pc--;
+    else
+      V(inst.data.reg) = key;
+    return;
+  }
+
   case UNKNOWN: assert(false); return;
   }
 }
