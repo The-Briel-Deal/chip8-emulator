@@ -326,7 +326,7 @@ int main_loop(struct state *state) {
     struct inst inst = decode(raw_inst);
     execute(state, inst);
     draw_grid(state->display);
-    struct timespec delay = {.tv_sec = 0, .tv_nsec = (NANOS_PER_SEC) / 700 };
+    struct timespec delay = {.tv_sec = 0, .tv_nsec = (NANOS_PER_SEC) / 700};
     nanosleep(&delay, NULL);
   }
   return 0;
@@ -637,12 +637,18 @@ void execute(struct state *state, struct inst inst) {
     return;
   }
   case RND: V(RV(inst).reg) = RV(inst).val & rand(); return;
-  case STORE_REGS:
-    memcpy(&state->heap[state->index_reg], &state->regs[0], inst.data.reg + 1);
+  case STORE_REGS: {
+    uint8_t nbytes = inst.data.reg + 1;
+    memcpy(&state->heap[state->index_reg], &state->regs[0], nbytes);
+    state->index_reg += nbytes;
     return;
-  case LOAD_REGS:
-    memcpy(&state->regs[0], &state->heap[state->index_reg], inst.data.reg + 1);
+  }
+  case LOAD_REGS: {
+    uint8_t nbytes = inst.data.reg + 1;
+    memcpy(&state->regs[0], &state->heap[state->index_reg], nbytes);
+    state->index_reg += nbytes;
     return;
+  }
   case LOAD_BCD: {
     uint8_t val = V(inst.data.reg);
     state->heap[state->index_reg + 0] = (val / 100) % 10;
