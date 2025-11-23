@@ -459,6 +459,7 @@ struct inst decode(uint16_t inst) {
     }
     break;
   }
+  assert(false);
   return VOID_INST(UNKNOWN);
 }
 #undef NIBBLE1
@@ -503,6 +504,12 @@ static void ex_load_char(struct state *state, struct inst inst) {
   state->index_reg = HEX_CHARS_START + (5 * hex_char);
 }
 static void ex_display(struct state *state, struct inst inst) {
+  // Temendus test suite wants to make sure display waits for vblank interupt.
+  // This is just emulating that behavior by waiting for 1/60th of a second
+  // before drawing.
+  struct timespec delay = {.tv_sec = 0, .tv_nsec = (NANOS_PER_SEC) / 60};
+  nanosleep(&delay, NULL);
+
   uint8_t x_pos = V(inst.data.display.vx);
   uint8_t y_pos = V(inst.data.display.vy);
   uint8_t height = inst.data.display.height;
@@ -673,7 +680,7 @@ void execute(struct state *state, struct inst inst) {
     uint8_t key = get_key_down();
     // 0xFF means the key wasn't in the range 0x0-0xF
     if (key == 0xFF)
-      state->pc--;
+      state->pc -= 2;
     else
       V(inst.data.reg) = key;
     return;
