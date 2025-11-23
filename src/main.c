@@ -202,7 +202,6 @@ void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
 
   for (int i = 0; i < nbytes;) {
     accum += M_PI_M2 * C_4_PITCH / DEFAULT_RATE;
-    printf("data->accumulator=%lf\n", accum);
     if (accum >= M_PI_M2) accum -= M_PI_M2;
     int16_t val = sin(accum) * DEFAULT_VOLUME * 32767.0;
     *(uint16_t *)(&buf[i]) = val;
@@ -211,7 +210,7 @@ void pa_write_callback(pa_stream *p, size_t nbytes, void *userdata) {
     i += frame_size;
   }
 
-  pa_stream_write(p, buf, sizeof(buf), NULL, 0, PA_SEEK_RELATIVE);
+  pa_stream_write(p, buf, nbytes, NULL, 0, PA_SEEK_RELATIVE);
 }
 
 void pa_state_cb(pa_context *c, void *userdata) {
@@ -219,19 +218,14 @@ void pa_state_cb(pa_context *c, void *userdata) {
   int *pa_ready = userdata;
   state = pa_context_get_state(c);
   switch (state) {
-    // These are just here for reference
-  case PA_CONTEXT_UNCONNECTED:
-  case PA_CONTEXT_CONNECTING:
-  case PA_CONTEXT_AUTHORIZING:
-  case PA_CONTEXT_SETTING_NAME:
-  default: break;
   case PA_CONTEXT_FAILED:
   case PA_CONTEXT_TERMINATED: *pa_ready = 2; break;
   case PA_CONTEXT_READY: *pa_ready = 1; break;
+  default: break;
   }
 }
 
-static const pa_buffer_attr ba = {
+static pa_buffer_attr ba = {
     .fragsize = (uint32_t)-1,
     .maxlength = (uint32_t)-1,
     .minreq = (uint32_t)-1,
@@ -273,9 +267,11 @@ void init_state(struct state *state) {
       pa_stream_new(state->pa_context, "chip8 emulator audio", &ss, NULL);
   pa_stream_set_write_callback(state->pa_stream, pa_write_callback, NULL);
 
-  r = pa_stream_connect_playback(
-      state->pa_stream, NULL, &ba,
-      PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_AUTO_TIMING_UPDATE, NULL, NULL);
+  r = pa_stream_connect_playback(state->pa_stream, NULL, &ba,
+                                 PA_STREAM_AUTO_TIMING_UPDATE |
+                                     PA_STREAM_ADJUST_LATENCY |
+                                     PA_STREAM_AUTO_TIMING_UPDATE,
+                                 NULL, NULL);
   if (r != 0)
     printf("Error from pa_stream_connect_playback(): %s\n", pa_strerror(r));
 }
